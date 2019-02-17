@@ -97,17 +97,16 @@ namespace detail
 {
 
 template <>
-struct data_adapter<Data&>
+struct write_adapter<Data&>
 {
-  const bool AdaptsData = true;
   Data& data;
-  data_adapter<Data&>(Data& d) : data{d} {};
+  write_adapter<Data&>(Data& d) : data{d} {};
 
-  void resize(std::uint32_t value)
+  void resize(std::size_t value)
   {
     data.resize(value);
   }
-  std::uint32_t size() const
+  std::size_t size() const
   {
     return data.size();
   }
@@ -116,12 +115,44 @@ struct data_adapter<Data&>
     return data[pos];
   }
 };
+
 template <>
-struct data_adapter<cbor_object&>
+struct read_adapter<const Data&>
 {
-  const bool AdaptsData = true;
+  const Data& data;
+  std::size_t cursor = 0;
+  read_adapter<const Data&>(const Data& d) : data{d} {};
+  std::size_t position() const
+  {
+    return cursor;
+  }
+  void advance(std::size_t count)
+  {
+    cursor += count;
+    if (cursor >= data.size())
+    {
+      // Throw!?
+    }
+  }
+  std::size_t size() const
+  {
+    return data.size();
+  }
+  const DataType& operator[](std::size_t pos) const
+  {
+    if (pos >= data.size())
+    {
+      // Throw!?
+    }
+    return data[pos];
+  }
+};
+
+template <>
+struct write_adapter<cbor_object&>
+{
   cbor_object& o;
-  data_adapter<cbor_object&>(cbor_object& d) : o{d} {};
+  write_adapter<cbor_object&>(cbor_object& d) : o{d} {};
 
   void resize(std::uint32_t value)
   {
@@ -168,7 +199,7 @@ struct traits<std::vector<T>>
   static std::size_t serializer(const Type& v, Data& data)
   {
     std::size_t addition = 0;
-    addition += serializeInteger(0b100, v.size(), data);
+    addition += serializeItem(0b100, v.size(), data);
     for (const auto& k : v)
     {
       addition += to_cbor(k, data);
@@ -216,7 +247,7 @@ struct traits<std::tuple<Ts...>>
   static std::size_t serializer(const Type& v, Data& data)
   {
     std::size_t addition = 0;
-    addition += serializeInteger(0b100, sizeof...(Ts), data);
+    addition += serializeItem(0b100, sizeof...(Ts), data);
     return addition + serialize_tuple_element<sizeof...(Ts), Ts...>::execute(v, data);
   }
 };
@@ -232,7 +263,7 @@ struct traits<std::pair<A, B>>
   static std::size_t serializer(const std::pair<A, B>& v, Data& data)
   {
     std::size_t addition = 0;
-    addition += serializeInteger(0b100, uint8_t{ 2 }, data);
+    addition += serializeItem(0b100, uint8_t{ 2 }, data);
     addition += to_cbor(v.first, data);
     addition += to_cbor(v.second, data);
     return addition;
@@ -250,7 +281,7 @@ struct traits<std::map<KeyType, ValueType>>
   static std::size_t serializer(const std::map<KeyType, ValueType>& v, Data& data)
   {
     std::size_t addition = 0;
-    addition += serializeInteger(0b101, v.size(), data);
+    addition += serializeItem(0b101, v.size(), data);
     for (const auto& k_v : v)
     {
       const auto& key = k_v.first;

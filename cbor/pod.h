@@ -42,12 +42,12 @@ namespace detail
 {
 
 template <>
-struct data_adapter<DataType*, std::size_t>
+struct write_adapter<DataType*, std::size_t>
 {
   DataType* data;
   std::size_t max_length;
   std::size_t used_size { 0 };
-  data_adapter<DataType*, std::size_t>(DataType* d, std::size_t size) : data{d}, max_length{size} {};
+  write_adapter<DataType*, std::size_t>(DataType* d, std::size_t size) : data{d}, max_length{size} {};
   void resize(std::uint32_t value)
   {
     used_size = value;
@@ -67,7 +67,7 @@ struct data_adapter<DataType*, std::size_t>
  * @brief Function to write a 8 bit unsigned int in its shortest form given the major type.
  */
 template <typename Data>
-std::size_t serializeInteger(const std::uint8_t major_type, const std::uint8_t v, Data& data)
+std::size_t serializeItem(const std::uint8_t major_type, const std::uint8_t v, Data& data)
 {
   if (v <= 23)
   {
@@ -94,16 +94,23 @@ std::size_t serializePrimitive(const std::uint8_t primitive, Data& data)
   data[offset] = primitive;
   return 1;
 }
+template <typename Data>
+std::size_t deserializePrimitive(std::uint8_t& primitive, Data& data)
+{
+  primitive = data[data.position()];
+  data.advance(1);
+  return 1;
+}
 
 /**
  * @brief Function to write a 16 bit unsigned int in its shortest form given the major type.
  */
 template <typename Data>
-std::size_t serializeInteger(const std::uint8_t major_type, const std::uint16_t v, Data& data)
+std::size_t serializeItem(const std::uint8_t major_type, const std::uint16_t v, Data& data)
 {
   if (v <= std::numeric_limits<std::uint8_t>::max())
   {
-    return serializeInteger(major_type, static_cast<std::uint8_t>(v), data);
+    return serializeItem(major_type, static_cast<std::uint8_t>(v), data);
   }
   const std::size_t offset = data.size();
   data.resize(offset + 2 + 1);
@@ -117,11 +124,11 @@ std::size_t serializeInteger(const std::uint8_t major_type, const std::uint16_t 
  * @brief Function to write a 32 bit unsigned int in its shortest form given the major type.
  */
 template <typename Data>
-std::size_t serializeInteger(const std::uint8_t major_type, const std::uint32_t v, Data& data)
+std::size_t serializeItem(const std::uint8_t major_type, const std::uint32_t v, Data& data)
 {
   if (v <= std::numeric_limits<std::uint16_t>::max())
   {
-    return serializeInteger(major_type, static_cast<std::uint16_t>(v), data);
+    return serializeItem(major_type, static_cast<std::uint16_t>(v), data);
   }
   const std::size_t offset = data.size();
   data.resize(offset + 4 + 1);
@@ -135,11 +142,11 @@ std::size_t serializeInteger(const std::uint8_t major_type, const std::uint32_t 
  * @brief Function to write a 64 bit unsigned int in its shortest form given the major type.
  */
 template <typename Data>
-std::size_t serializeInteger(const std::uint8_t major_type, const std::uint64_t v, Data& data)
+std::size_t serializeItem(const std::uint8_t major_type, const std::uint64_t v, Data& data)
 {
   if (v <= std::numeric_limits<std::uint32_t>::max())
   {
-    return serializeInteger(major_type, static_cast<std::uint32_t>(v), data);
+    return serializeItem(major_type, static_cast<std::uint32_t>(v), data);
   }
   const std::size_t offset = data.size();
   data.resize(offset + 8 + 1);
@@ -149,6 +156,112 @@ std::size_t serializeInteger(const std::uint8_t major_type, const std::uint64_t 
   return 9;
 }
 
+template <typename Data>
+std::size_t deserializeItem(std::uint8_t& first_byte, std::uint64_t& v, Data& data)
+{
+  first_byte = data[data.position()];
+  std::uint8_t direct = data[data.position()] & 0b11111;
+  if (direct < 24)
+  {
+    v = direct;
+    data.advance(1);
+    return 1;
+  }
+  else if (direct == 24)  // uint8_t case
+  {
+    v = data[data.position() + 1];
+    data.advance(2);
+    return 2;
+  }
+  else if (direct == 25)  // uint16_t case
+  {
+    const std::uint16_t intermediate = *reinterpret_cast<const std::uint16_t*>(&(data[data.position() + 1]));
+    v = fixEndianness(intermediate);
+    data.advance(3);
+    return 3;
+  }
+  else if (direct == 26)
+  {
+    const std::uint32_t intermediate = *reinterpret_cast<const std::uint32_t*>(&(data[data.position() + 1]));
+    v = fixEndianness(intermediate);
+    data.advance(5);
+    return 5;
+  }
+  else if (direct == 27)
+  {
+    const std::uint64_t intermediate = *reinterpret_cast<const std::uint64_t*>(&(data[data.position() + 1]));
+    v = fixEndianness(intermediate);
+    data.advance(9);
+    return 9;
+  }
+  else if (direct == 31)
+  {
+  }
+  return 0;
+}
+
+template <typename Type, typename Data>
+static std::size_t deserializeInteger(std::uint8_t major_type, Type& v, Data& data)
+{
+  std::uint8_t first = 0;
+  std::uint64_t res;
+  std::size_t advanced = deserializeItem(first, res, data);
+  if ((first >> 5) == major_type)
+  {
+    if (res > std::numeric_limits<Type>::max())
+    {
+      // Todo: Size error!?
+    }
+    else
+    {
+      v = res;
+      return advanced;
+    }
+  }
+  else
+  {
+    // @todo; panic
+  }
+  return 0;
+}
+
+template <typename Type, typename Data>
+static std::size_t deserializeSignedInteger(Type& v, Data& data)
+{
+  std::uint8_t first = 0;
+  std::uint64_t res;
+  std::size_t advanced = deserializeItem(first, res, data);
+  if ((first >> 5) == 0b000)
+  {
+    if (res > std::numeric_limits<Type>::max())
+    {
+      // Todo: Size error!?
+    }
+    else
+    {
+      v = res;
+      return advanced;
+    }
+  }
+  else if ((first >> 5) == 0b001)
+  {
+    std::int64_t signedres = -(res + 1);
+    if (signedres < std::numeric_limits<Type>::min())
+    {
+      // Todo: Size error!?
+    }
+    else
+    {
+      v = signedres;
+      return advanced;
+    }
+  }
+  else
+  {
+    // @todo; panic
+  }
+  return 0;
+}
 /**
  * Specialization for bool.
  */
@@ -161,6 +274,35 @@ struct traits<bool>
   static std::size_t serializer(const Type& v, Data& data)
   {
     return serializePrimitive((0b111 << 5) | (20 + (1 ? v : 0)), data);
+  }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    std::uint8_t type;
+    std::size_t size = deserializePrimitive(type, data);
+    if ((type >> 5) == (0b111))
+    {
+      if ((type & 0b11111) == 21)
+      {
+        v = true;
+        return size;
+      }
+      else if ((type & 0b11111) == 20)
+      {
+        v = false;
+        return size;
+      }
+      else
+      {
+        // @todo type error.
+      }
+    }
+    else
+    {
+      // @todo type error.
+    }
+    return 0;
   }
 };
 
@@ -177,6 +319,21 @@ struct traits<std::nullptr_t>
   {
     return serializePrimitive((0b111 << 5) | 22, data);
   }
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    std::uint8_t type;
+    std::size_t size = deserializePrimitive(type, data);
+    if (type == ((0b111 << 5) | 22))
+    {
+      v = nullptr;
+    }
+    else
+    {
+      // @todo type error
+    }
+    return size;
+  }
 };
 
 
@@ -191,7 +348,13 @@ struct traits<std::uint8_t>
   template <typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
-    return serializeInteger(0b000, v, data);
+    return serializeItem(0b000, v, data);
+  }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    return deserializeSignedInteger(v, data);
   }
 };
 
@@ -205,7 +368,12 @@ struct traits<std::uint16_t>
   template <typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
-    return serializeInteger(0b000, v, data);
+    return serializeItem(0b000, v, data);
+  }
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    return deserializeInteger(0b000, v, data);
   }
 };
 
@@ -219,7 +387,13 @@ struct traits<std::uint32_t>
   template <typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
-    return serializeInteger(0b000, v, data);
+    return serializeItem(0b000, v, data);
+  }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    return deserializeInteger(0b000, v, data);
   }
 };
 
@@ -233,7 +407,12 @@ struct traits<std::uint64_t>
   template <typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
-    return serializeInteger(0b000, v, data);
+    return serializeItem(0b000, v, data);
+  }
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    return deserializeInteger(0b000, v, data);
   }
 };
 
@@ -250,12 +429,17 @@ struct traits<std::int8_t>
   {
     if (v < 0)
     {
-      return serializeInteger(0b001, static_cast<std::uint8_t>(-v-1), data);
+      return serializeItem(0b001, static_cast<std::uint8_t>(-v-1), data);
     }
     else
     {
-      return serializeInteger(0b000, static_cast<std::uint8_t>(v), data);
+      return serializeItem(0b000, static_cast<std::uint8_t>(v), data);
     }
+  }
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    return deserializeSignedInteger(v, data);
   }
 };
 
@@ -271,12 +455,17 @@ struct traits<std::int16_t>
   {
     if (v < 0)
     {
-      return serializeInteger(0b001, static_cast<std::uint16_t>(-v-1), data);
+      return serializeItem(0b001, static_cast<std::uint16_t>(-v-1), data);
     }
     else
     {
-      return serializeInteger(0b000, static_cast<std::uint16_t>(v), data);
+      return serializeItem(0b000, static_cast<std::uint16_t>(v), data);
     }
+  }
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    return deserializeSignedInteger(v, data);
   }
 };
 
@@ -292,12 +481,18 @@ struct traits<std::int32_t>
   {
     if (v < 0)
     {
-      return serializeInteger(0b001, static_cast<std::uint32_t>(-v - 1), data);
+      return serializeItem(0b001, static_cast<std::uint32_t>(-v - 1), data);
     }
     else
     {
-      return serializeInteger(0b000, static_cast<std::uint32_t>(v), data);
+      return serializeItem(0b000, static_cast<std::uint32_t>(v), data);
     }
+  }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    return deserializeSignedInteger(v, data);
   }
 };
 
@@ -313,12 +508,17 @@ struct traits<std::int64_t>
   {
     if (v < 0)
     {
-      return serializeInteger(0b001, static_cast<std::uint64_t>(-v - 1), data);
+      return serializeItem(0b001, static_cast<std::uint64_t>(-v - 1), data);
     }
     else
     {
-      return serializeInteger(0b000, static_cast<std::uint64_t>(v), data);
+      return serializeItem(0b000, static_cast<std::uint64_t>(v), data);
     }
+  }
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    return deserializeSignedInteger(v, data);
   }
 };
 
@@ -340,6 +540,25 @@ struct traits<float>
     *reinterpret_cast<std::uint32_t*>(&(data[offset])) = fixed;
     return 5;
   }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    std::uint8_t type;
+    std::size_t size = deserializePrimitive(type, data);
+    if (type == ((0b111 << 5) | 26))
+    {
+      auto fixed = fixEndianness(*reinterpret_cast<const std::uint32_t*>(&data[data.position()]));
+      v = *reinterpret_cast<const float*>(&fixed);
+      data.advance(4);
+      return 4 + size;
+    }
+    else
+    {
+      // type error.
+    }
+    return 0;
+  }
 };
 
 /**
@@ -359,6 +578,25 @@ struct traits<double>
     *reinterpret_cast<std::uint64_t*>(&(data[offset])) = fixed;
     return 9;
   }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    std::uint8_t type;
+    std::size_t size = deserializePrimitive(type, data);
+    if (type == ((0b111 << 5) | 27))
+    {
+      auto fixed = fixEndianness(*reinterpret_cast<const std::uint64_t*>(&data[data.position()]));
+      v = *reinterpret_cast<const double*>(&fixed);
+      data.advance(8);
+      return 8 + size;
+    }
+    else
+    {
+      // type error.
+    }
+    return 0;
+  }
 };
 
 
@@ -373,7 +611,7 @@ struct traits<const char*>
   static std::size_t serializer(const Type& v, Data& data)
   {
     std::size_t length = strlen(v);
-    std::size_t addition = serializeInteger(0b011, length, data);
+    std::size_t addition = serializeItem(0b011, length, data);
     std::size_t offset = data.size();
     data.resize(data.size() + length);
     for (std::size_t i = 0; i < length; i++)

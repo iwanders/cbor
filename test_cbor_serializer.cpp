@@ -116,7 +116,7 @@ struct Bar
 };
 
 template <typename ...Data>
-std::size_t to_cbor(const Bar& b, cbor::detail::data_adapter<Data...> data)
+std::size_t to_cbor(const Bar& b, cbor::detail::write_adapter<Data...> data)
 {
   std::cout << "to cbor adl" << std::endl;
   to_cbor(b.f, data);
@@ -144,11 +144,28 @@ void test_adl()
 void test_pod()
 {
   {
+    std::uint16_t input{50};
+    Data result = {0x18, 0x32};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    std::uint16_t output = 0;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(input, output);
+  }
+  {
     unsigned int input{2};
     Data result = {0x02};
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    unsigned int output = 0;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(input, output);
   }
   {
     double input{13377.1414};
@@ -156,6 +173,11 @@ void test_pod()
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    double output = 0.0;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(input, output);
   }
   {
     float input{6.3125};
@@ -163,6 +185,11 @@ void test_pod()
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    float output = 0.0;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(input, output);
   }
   {
     Data result = {0xF6};
@@ -176,11 +203,22 @@ void test_pod()
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
-    int input2{-1};
-    Data result2 = {0x20};
+
+    int output = 0;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(input, output);
+
+    int input2{-2};
+    Data result2 = {0x21};
     cbor_representation.resize(0);
     cbor::serialize(input2, cbor_representation);
     test(cbor::hexdump(result2), cbor::hexdump(cbor_representation));
+
+    int output2 = 0;
+    const Data cbor_data2 = cbor_representation;
+    cbor::deserialize(output2, cbor_data2);
+    test(input2, output2);
   }
   {
     bool bool_val = true;
@@ -188,11 +226,22 @@ void test_pod()
     Data cbor_representation;
     cbor::serialize(bool_val, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    bool output = false;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(bool_val, output);
+
     bool_val = false;
     Data result2 = {0xF4};
     cbor_representation.resize(0);
     cbor::serialize(bool_val, cbor_representation);
     test(cbor::hexdump(result2), cbor::hexdump(cbor_representation));
+
+    output = true;
+    const Data cbor_data2 = cbor_representation;
+    cbor::deserialize(output, cbor_data2);
+    test(output, bool_val);
   }
 }
 

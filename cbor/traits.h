@@ -65,11 +65,19 @@ template <typename T> struct traits<volatile T> : traits<T> {};
 template <typename T> struct traits<const volatile T> : traits<T> {};
 
 template <typename Arg0, typename... Data>
-struct data_adapter
+struct write_adapter
 {
-  data_adapter<Data...>(...)
+  write_adapter<Data...>()
   {
-    static_assert(std::is_same<Arg0, void>::value, "Data adapter not found for this type.");
+    static_assert(std::is_same<Arg0, void>::value, "Write adapter not found for this type.");
+  }
+};
+template <typename Arg0, typename... Data>
+struct read_adapter
+{
+  read_adapter<Arg0, Data...>()
+  {
+    static_assert(std::is_same<Arg0, bool>::value, "Data adapter not found for this type.");
   }
 };
 }  // namespace detail
