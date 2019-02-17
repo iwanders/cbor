@@ -40,7 +40,7 @@ namespace detail
 /**
  * @brief Serializer trait struct
  */
-template <typename T>
+template <typename T, typename = void>
 struct traits
 {
   template <typename Data>
@@ -50,6 +50,11 @@ struct traits
     return 0;
   }
 };
+
+// https://github.com/llvm-mirror/libcxx/blob/master/include/__tuple#L51-L53
+template <typename T> struct traits<const T> : traits<T> {};
+template <typename T> struct traits<volatile T> : traits<T> {};
+template <typename T> struct traits<const volatile T> : traits<T> {};
 
 template <typename... Data>
 struct data_adapter

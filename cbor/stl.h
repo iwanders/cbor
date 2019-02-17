@@ -92,11 +92,7 @@ struct data_adapter<Data&>
 {
   Data& data;
   data_adapter<Data&>(Data& d) : data{d} {};
-  void push_back(const DataType& v)
-  {
-    data.push_back(v);
-    //  static_assert(true, "This type is not supported by the cbor serialization.");
-  }
+
   void resize(std::uint32_t value)
   {
     data.resize(value);
@@ -104,10 +100,6 @@ struct data_adapter<Data&>
   std::uint32_t size() const
   {
     return data.size();
-  }
-  DataType& back() const
-  {
-    return data.back();
   }
   DataType& operator[](std::size_t pos)
   {
@@ -125,9 +117,7 @@ struct traits<std::string>
   template <typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
-    std::size_t addition = serializeInteger(0b011, v.size(), data);
-    //  data.insert(data.end(), v.begin(), v.end());
-    return addition + v.size();
+    return serialize(v.c_str(), data);
   }
 };
 
@@ -244,11 +234,14 @@ struct traits<cbor_object>
   static std::size_t serializer(const Type& obj, Data& data)
   {
     const auto& v = obj.serialized_;
-    data.insert(data.end(), v.begin(), v.end());
+    std::size_t offset = data.size();
+    data.resize(data.size() + v.size());
+    for (std::size_t i = 0; i < v.size(); i++)
+    {
+      data[i + offset] = v[i];
+    }
     return v.size();
   }
 };
-
-
 }  // namespace detail
 }  // namespace cbor

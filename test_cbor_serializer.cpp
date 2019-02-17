@@ -30,8 +30,8 @@
 #include <array>
 #include <iostream>
 #include <vector>
-#include "include/cbor.h"
-#include "include/stl.h"
+#include "cbor/cbor.h"
+#include "cbor/stl.h"
 
 using Data = std::vector<std::uint8_t>;
 
@@ -60,6 +60,7 @@ int main(int /* argc */, char** /* argv */)
   using EventMap = std::map<unsigned long, EventContainer>;
 
 /*
+*/
 
   // some values from https://github.com/cbor/test-vectors/blob/master/appendix_a.json
   // Test map
@@ -98,7 +99,6 @@ int main(int /* argc */, char** /* argv */)
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
 
-*/
   unsigned int input{2};
   Data result = {0x02};
   Data cbor_representation;
@@ -110,5 +110,6 @@ int main(int /* argc */, char** /* argv */)
   std::array<cbor::DataType, 100> z;
   std::size_t len = cbor::serialize(input, z.data(), z.size());
   test(cbor::hexdump(result), cbor::hexdump(z, len));
+
   return 0;
 }

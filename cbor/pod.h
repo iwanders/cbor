@@ -30,6 +30,7 @@
 
 #pragma once
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include "util.h"
 #include "traits.h"
@@ -47,20 +48,12 @@ struct data_adapter<DataType*, std::size_t>
   std::size_t max_length;
   std::size_t used_size { 0 };
   data_adapter<DataType*, std::size_t>(DataType* d, std::size_t size) : data{d}, max_length{size} {};
-  void push_back(const DataType& v)
-  {
-    data[used_size++] = v;
-  }
   void resize(std::uint32_t value)
   {
   }
   std::uint32_t size() const
   {
     return used_size;
-  }
-  DataType& back() const
-  {
-    return data[used_size];
   }
   DataType& operator[](std::size_t pos)
   {
@@ -77,8 +70,9 @@ std::size_t serializeInteger(const std::uint8_t major_type, const std::uint8_t v
 {
   if (v <= 23)
   {
+    const std::size_t offset = data.size();
     data.resize(data.size() + 1);
-    data.back() = std::uint8_t(major_type << 5) | v;
+    data[offset] = std::uint8_t(major_type << 5) | v;
     return 1;
   }
   else
@@ -208,6 +202,28 @@ struct traits<std::uint64_t>
   static std::size_t serializer(const Type& v, Data& data)
   {
     return serializeInteger(0b000, v, data);
+  }
+};
+
+/**
+ * Specialization for const char*
+ */
+template <>
+struct traits<const char*>
+{
+  using Type = const char*;
+  template <typename Data>
+  static std::size_t serializer(const Type& v, Data& data)
+  {
+    std::size_t length = strlen(v);
+    std::size_t addition = serializeInteger(0b011, length, data);
+    std::size_t offset = data.size();
+    data.resize(data.size() + length);
+    for (std::size_t i = 0; i < length; i++)
+    {
+      data[i + offset] = v[i];
+    }
+    return addition + length;
   }
 };
 
