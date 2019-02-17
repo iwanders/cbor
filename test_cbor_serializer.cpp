@@ -35,13 +35,15 @@
 
 using Data = std::vector<std::uint8_t>;
 
+bool failed = false;
+
 template <typename A, typename B>
 void test(const A& a, const B& b)
 {
   if (a != b)
   {
     std::cerr << "\033[31m" << "a (" << a << ") != b (" << b << ")" << "\033[0m" << std::endl;
-    exit(1);
+    failed = true;
   }
   else
   {
@@ -149,6 +151,26 @@ void test_pod()
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
   {
+    double input{13377.1414};
+    Data result = {0xFB, 0x40, 0xCA, 0x20, 0x92, 0x19, 0x65, 0x2B, 0xD4};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+  }
+  {
+    float input{6.3125};
+    Data result = {0xFA, 0x40, 0xCA, 0x00, 0x00};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+  }
+  {
+    Data result = {0xF6};
+    Data cbor_representation;
+    cbor::serialize(nullptr, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+  }
+  {
     int input{2};
     Data result = {0x02};
     Data cbor_representation;
@@ -158,6 +180,18 @@ void test_pod()
     Data result2 = {0x20};
     cbor_representation.resize(0);
     cbor::serialize(input2, cbor_representation);
+    test(cbor::hexdump(result2), cbor::hexdump(cbor_representation));
+  }
+  {
+    bool bool_val = true;
+    Data result = {0xF5};
+    Data cbor_representation;
+    cbor::serialize(bool_val, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+    bool_val = false;
+    Data result2 = {0xF4};
+    cbor_representation.resize(0);
+    cbor::serialize(bool_val, cbor_representation);
     test(cbor::hexdump(result2), cbor::hexdump(cbor_representation));
   }
 }
@@ -262,5 +296,5 @@ int main(int /* argc */, char** /* argv */)
   test_adl();
   test_into_object();
 
-  return 0;
+  return failed;
 }

@@ -86,6 +86,15 @@ std::size_t serializeInteger(const std::uint8_t major_type, const std::uint8_t v
   }
 }
 
+template <typename Data>
+std::size_t serializePrimitive(const std::uint8_t primitive, Data& data)
+{
+  const std::size_t offset = data.size();
+  data.resize(data.size() + 1);
+  data[offset] = primitive;
+  return 1;
+}
+
 /**
  * @brief Function to write a 16 bit unsigned int in its shortest form given the major type.
  */
@@ -139,6 +148,37 @@ std::size_t serializeInteger(const std::uint8_t major_type, const std::uint64_t 
   *reinterpret_cast<std::uint64_t*>(&(data[offset + 1])) = fixed;
   return 9;
 }
+
+/**
+ * Specialization for bool.
+ */
+template <>
+struct traits<bool>
+{
+  using Type = bool;
+
+  template <typename Data>
+  static std::size_t serializer(const Type& v, Data& data)
+  {
+    return serializePrimitive((0b111 << 5) | (20 + (1 ? v : 0)), data);
+  }
+};
+
+/**
+ * Specialization for null.
+ */
+template <>
+struct traits<std::nullptr_t>
+{
+  using Type = std::nullptr_t;
+
+  template <typename Data>
+  static std::size_t serializer(const Type& /* v */, Data& data)
+  {
+    return serializePrimitive((0b111 << 5) | 22, data);
+  }
+};
+
 
 /**
  * Specialization for uint8_t.
@@ -279,6 +319,45 @@ struct traits<std::int64_t>
     {
       return serializeInteger(0b000, static_cast<std::uint64_t>(v), data);
     }
+  }
+};
+
+
+/**
+ * Specialization for float.
+ */
+template <>
+struct traits<float>
+{
+  using Type = float;
+  template <typename Data>
+  static std::size_t serializer(const Type& v, Data& data)
+  {
+    serializePrimitive((0b111 << 5) | 26, data);
+    const std::size_t offset = data.size();
+    data.resize(offset + sizeof(Type));
+    auto fixed = fixEndianness(*reinterpret_cast<const std::uint32_t*>(&v));
+    *reinterpret_cast<std::uint32_t*>(&(data[offset])) = fixed;
+    return 5;
+  }
+};
+
+/**
+ * Specialization for double.
+ */
+template <>
+struct traits<double>
+{
+  using Type = double;
+  template <typename Data>
+  static std::size_t serializer(const Type& v, Data& data)
+  {
+    serializePrimitive((0b111 << 5) | 27, data);
+    const std::size_t offset = data.size();
+    data.resize(offset + sizeof(Type));
+    auto fixed = fixEndianness(*reinterpret_cast<const std::uint64_t*>(&v));
+    *reinterpret_cast<std::uint64_t*>(&(data[offset])) = fixed;
+    return 9;
   }
 };
 
