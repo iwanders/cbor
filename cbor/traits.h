@@ -59,12 +59,6 @@ template <typename T>
 using handled = typename std::enable_if<has_trait_helper<T>::value, bool >;
 // To do sfinae; , typename not_handled<T>::type = 0
 
-// to check if something is a specialisation. https://stackoverflow.com/a/44229779
-template <class T, std::size_t = sizeof(T)>std::true_type is_complete_impl(T *);
-std::false_type is_complete_impl(...);
-template <class T>
-using is_complete = decltype(is_complete_impl(std::declval<T*>()));
-
 // https://github.com/llvm-mirror/libcxx/blob/master/include/__tuple#L51-L53
 template <typename T> struct traits<const T> : traits<T> {};
 template <typename T> struct traits<volatile T> : traits<T> {};

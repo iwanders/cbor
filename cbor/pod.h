@@ -153,15 +153,6 @@ struct traits<std::uint8_t>
   {
     return serializeInteger(0b000, v, data);
   }
-  //  static std::size_t deserializer(const Data& data, Type& v)
-  //  {
-    //  const auto res = deserializeInteger(data.begin());
-    //  if (res.first == 0b000)
-    //  {
-      //  v = res.second;
-    //  }
-    //  return 0;
-  //  }
 };
 
 /**
@@ -205,6 +196,92 @@ struct traits<std::uint64_t>
     return serializeInteger(0b000, v, data);
   }
 };
+
+/**
+ * Specialization for int8_t.
+ */
+template <>
+struct traits<std::int8_t>
+{
+  using Type = std::int8_t;
+
+  template <typename Data>
+  static std::size_t serializer(const Type& v, Data& data)
+  {
+    if (v < 0)
+    {
+      return serializeInteger(0b001, static_cast<std::uint8_t>(-v-1), data);
+    }
+    else
+    {
+      return serializeInteger(0b000, static_cast<std::uint8_t>(v), data);
+    }
+  }
+};
+
+/**
+ * Specialization for uint16_t.
+ */
+template <>
+struct traits<std::int16_t>
+{
+  using Type = std::int16_t;
+  template <typename Data>
+  static std::size_t serializer(const Type& v, Data& data)
+  {
+    if (v < 0)
+    {
+      return serializeInteger(0b001, static_cast<std::uint16_t>(-v-1), data);
+    }
+    else
+    {
+      return serializeInteger(0b000, static_cast<std::uint16_t>(v), data);
+    }
+  }
+};
+
+/**
+ * Specialization for uint32_t.
+ */
+template <>
+struct traits<std::int32_t>
+{
+  using Type = std::int32_t;
+  template <typename Data>
+  static std::size_t serializer(const Type& v, Data& data)
+  {
+    if (v < 0)
+    {
+      return serializeInteger(0b001, static_cast<std::uint32_t>(-v - 1), data);
+    }
+    else
+    {
+      return serializeInteger(0b000, static_cast<std::uint32_t>(v), data);
+    }
+  }
+};
+
+/**
+ * Specialization for uint64_t.
+ */
+template <>
+struct traits<std::int64_t>
+{
+  using Type = std::int64_t;
+  template <typename Data>
+  static std::size_t serializer(const Type& v, Data& data)
+  {
+    if (v < 0)
+    {
+      return serializeInteger(0b001, static_cast<std::uint64_t>(-v - 1), data);
+    }
+    else
+    {
+      return serializeInteger(0b000, static_cast<std::uint64_t>(v), data);
+    }
+  }
+};
+
 
 /**
  * Specialization for const char*

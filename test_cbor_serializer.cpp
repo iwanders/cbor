@@ -148,6 +148,18 @@ void test_pod()
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
+  {
+    int input{2};
+    Data result = {0x02};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+    int input2{-1};
+    Data result2 = {0x20};
+    cbor_representation.resize(0);
+    cbor::serialize(input2, cbor_representation);
+    test(cbor::hexdump(result2), cbor::hexdump(cbor_representation));
+  }
 }
 
 namespace cbor_object_ser
