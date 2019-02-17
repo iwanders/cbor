@@ -44,12 +44,20 @@ template <typename T, typename = void>
 struct traits
 {
   template <typename Data>
-  static std::uint32_t serialize(const T& /* value */, Data& /* out */)
+  static void serialize(const T& /* value */, Data& /* out */)
   {
     static_assert(std::is_same<T, void>::value, "This type is not supported by the cbor serialization.");
-    return 0;
   }
 };
+
+// some helpers....
+template<typename T>
+using has_trait_helper = std::is_same<typename traits<T>::Type, T>;
+template <typename T>
+using not_handled = typename std::enable_if<!has_trait_helper<T>::value, bool>;
+template <typename T>
+using handled = typename std::enable_if<has_trait_helper<T>::value, bool >;
+// To do sfinae; , typename not_handled<T>::type = 0
 
 // https://github.com/llvm-mirror/libcxx/blob/master/include/__tuple#L51-L53
 template <typename T> struct traits<const T> : traits<T> {};

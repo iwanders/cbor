@@ -49,19 +49,12 @@ void test(const A& a, const B& b)
   }
 }
 
-int main(int /* argc */, char** /* argv */)
-{
-  //! Timepoint of that clock.
-  using TimePoint = uint64_t;
-  //! Trace event as it is stored in the ringbuffer.
-  using ScopeTraceEvent = std::tuple<TimePoint, unsigned int, uint8_t>;
-  //! The container that backs the ringbuffer.
-  using EventContainer = std::vector<ScopeTraceEvent>;
-  using EventMap = std::map<unsigned long, EventContainer>;
 
 /*
-*/
 
+*/
+void test_associatives()
+{
   // some values from https://github.com/cbor/test-vectors/blob/master/appendix_a.json
   // Test map
   {
@@ -80,7 +73,9 @@ int main(int /* argc */, char** /* argv */)
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
-
+}
+void test_stl()
+{
   // test tuple
   {
     std::tuple<unsigned int, unsigned int> input{ 1, 2 };
@@ -98,18 +93,122 @@ int main(int /* argc */, char** /* argv */)
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
+}
 
+
+void test_array()
+{
   unsigned int input{2};
   Data result = {0x02};
-  Data cbor_representation;
-  cbor::serialize(input, cbor_representation);
-  test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
-
-
-
   std::array<cbor::DataType, 100> z;
   std::size_t len = cbor::serialize(input, z.data(), z.size());
   test(cbor::hexdump(result), cbor::hexdump(z, len));
+}
 
+
+namespace foo
+{
+struct Bar
+{
+  std::uint32_t f;
+};
+
+template <typename ...Data>
+std::size_t to_cbor(const Bar& b, cbor::detail::data_adapter<Data...> data)
+{
+  std::cout << "to cbor adl" << std::endl;
+  //  cbor::to_cbor(b.f, data);
+  to_cbor(b.f, data);
+  return 0;
+}
+}
+void test_adl()
+{
+  {
+    foo::Bar input{2};
+    Data result = {0x02};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+  }
+  {
+    std::vector<foo::Bar> input = {foo::Bar{2}, foo::Bar{3}, foo::Bar{4}};
+    Data result = {0x83, 0x02, 0x03, 0x04};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+  }
+}
+
+void test_pod()
+{
+  {
+    unsigned int input{2};
+    Data result = {0x02};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+  }
+}
+
+namespace thing_test
+{
+template <typename T>
+struct z
+{
+  using Type = void;
+  template<typename D>
+  static void c(D&){};
+};
+
+template<>
+struct z<std::uint32_t>
+{
+  using Type = std::uint32_t;
+  template<typename D>
+  static std::uint32_t c(D&){};
+};
+
+
+template<typename T>
+using has_trait_helper = std::is_same<typename z<T>::Type, T>;
+template <typename T>
+using not_handled = typename std::enable_if<!has_trait_helper<T>::value, bool>;
+template <typename T>
+using handled = typename std::enable_if<has_trait_helper<T>::value, bool >;
+
+
+template <typename T, typename... Data, typename not_handled<T>::type = 0>
+void dispatch(T& x, Data...)
+{
+  std::cout << "Fallback: " << x << std::endl;
+}
+
+template <typename T, typename... Data, typename handled<T>::type = 0>
+void dispatch(T& x, Data...)
+{
+  std::cout << "specific is specific: " << x << std::endl;
+}
+
+
+void foo()
+{
+  std::uint32_t f32{32};
+  std::uint16_t f16{16};
+
+  int x = 0;
+  dispatch(f32, x);
+  dispatch(f16, x);
+}
+}
+
+#include <functional>
+int main(int /* argc */, char** /* argv */)
+{
+  test_pod();
+  test_stl();
+  test_associatives();
+  test_array();
+  test_adl();
   return 0;
 }

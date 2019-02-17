@@ -38,6 +38,24 @@
 namespace cbor
 {
 
+template <typename T, typename... Data, typename detail::handled<T>::type = 0>
+std::size_t to_cbor(const T& v, detail::data_adapter<Data...> data)
+{
+  return detail::traits<T>::serializer(v, data);
+}
+
+template <typename T, typename... Data, typename detail::not_handled<T>::type = 0>
+std::size_t to_cbor(const T& v, detail::data_adapter<Data...> data)
+{
+  return to_cbor(v, data);
+}
+
+namespace detail
+{
+  // bump from the detail namespace up to the non detail namespace to allow ADL to apply on the data helper.
+  using ::cbor::to_cbor;
+}
+
 /**
  * @brief Entry to the trait system, serializes v into data.
  * @param v The data to serialize.
@@ -46,14 +64,12 @@ namespace cbor
 template <typename T, typename... Data>
 std::size_t serialize(const T& v, Data&&... data)
 {
+  //  using ::cbor::to_cbor;
   auto wrapper = detail::data_adapter<Data...>(std::forward<Data>(data)...);
-  return detail::traits<T>::serializer(v, wrapper);
+  // allow ADL lookup for types...
+  return to_cbor(v, wrapper);
+  //  return detail::traits<T>::serializer(v, wrapper);
 }
 
-template <typename T, typename Data>
-std::size_t serialize(const T& v, detail::data_adapter<Data> data)
-{
-  return detail::traits<T>::serializer(v, data);
-}
 
 }  // namespace cbor

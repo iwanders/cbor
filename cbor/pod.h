@@ -50,6 +50,7 @@ struct data_adapter<DataType*, std::size_t>
   data_adapter<DataType*, std::size_t>(DataType* d, std::size_t size) : data{d}, max_length{size} {};
   void resize(std::uint32_t value)
   {
+    used_size = value;
   }
   std::uint32_t size() const
   {
