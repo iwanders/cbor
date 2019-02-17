@@ -92,6 +92,12 @@ void test_stl()
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    std::tuple<unsigned int, unsigned int> output;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(std::get<0>(output), std::get<0>(input));
+    test(std::get<1>(output), std::get<1>(input));
   }
   // test vector
   {

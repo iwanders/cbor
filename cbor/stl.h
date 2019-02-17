@@ -248,13 +248,21 @@ struct traits<std::vector<T>>
  * Helper for serializing tuples, recurses down through index.
  */
 template <size_t index, typename... Ts>
-struct serialize_tuple_element
+struct trait_tuple_element_helper
 {
   template <typename Data>
-  static std::size_t execute(const std::tuple<Ts...>& t, Data& data)
+  static std::size_t serialize(const std::tuple<Ts...>& t, Data& data)
   {
     std::size_t value = to_cbor(std::get<sizeof...(Ts) - index>(t), data);
-    value += serialize_tuple_element<index - 1, Ts...>::execute(t, data);
+    value += trait_tuple_element_helper<index - 1, Ts...>::serialize(t, data);
+    return value;
+  }
+
+  template <typename Data>
+  static std::size_t deserialize(std::tuple<Ts...>& t, Data& data)
+  {
+    std::size_t value = from_cbor(std::get<sizeof...(Ts) - index>(t), data);
+    value += trait_tuple_element_helper<index - 1, Ts...>::deserialize(t, data);
     return value;
   }
 };
@@ -263,10 +271,15 @@ struct serialize_tuple_element
  * Recursion terminator at index 0.
  */
 template <typename... Ts>
-struct serialize_tuple_element<0, Ts...>
+struct trait_tuple_element_helper<0, Ts...>
 {
   template <typename Data>
-  static std::size_t execute(const std::tuple<Ts...>& /*t*/, Data& /*data*/)
+  static std::size_t serialize(const std::tuple<Ts...>& /*t*/, Data& /*data*/)
+  {
+    return 0;
+  }
+  template <typename Data>
+  static std::size_t deserialize(std::tuple<Ts...>& /*t*/, Data& /*data*/)
   {
     return 0;
   }
@@ -284,7 +297,28 @@ struct traits<std::tuple<Ts...>>
   {
     std::size_t addition = 0;
     addition += serializeItem(0b100, sizeof...(Ts), data);
-    return addition + serialize_tuple_element<sizeof...(Ts), Ts...>::execute(v, data);
+    return addition + trait_tuple_element_helper<sizeof...(Ts), Ts...>::serialize(v, data);
+  }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    std::uint8_t first_byte;
+    std::uint64_t length;
+    std::size_t len = deserializeItem(first_byte, length, data);
+    if (length != sizeof...(Ts))
+    {
+      // todo incorrect tuple length.
+    }
+    if ((first_byte >> 5) == 0b100)
+    {
+      return len + trait_tuple_element_helper<sizeof...(Ts), Ts...>::deserialize(v, data);
+    }
+    else
+    {
+      // todo incorrect type.
+    }
+    return len;
   }
 };
 
