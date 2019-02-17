@@ -82,6 +82,15 @@ public:
     return res;
   }
 };
+std::string hexdump(const cbor_object& d)
+{
+  std::stringstream ss;
+  for (const auto& v : d.serialized_)
+  {
+    ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ v } << " ";
+  }
+  return ss.str();
+}
 
 
 namespace detail
@@ -90,6 +99,7 @@ namespace detail
 template <>
 struct data_adapter<Data&>
 {
+  const bool AdaptsData = true;
   Data& data;
   data_adapter<Data&>(Data& d) : data{d} {};
 
@@ -109,6 +119,7 @@ struct data_adapter<Data&>
 template <>
 struct data_adapter<cbor_object&>
 {
+  const bool AdaptsData = true;
   cbor_object& o;
   data_adapter<cbor_object&>(cbor_object& d) : o{d} {};
 
@@ -123,6 +134,12 @@ struct data_adapter<cbor_object&>
   DataType& operator[](std::size_t pos)
   {
     return o.serialized_[pos];
+  }
+
+  // Allow unwrapping the adapter from the object...
+  operator cbor_object&()
+  {
+    return o;
   }
 };
 

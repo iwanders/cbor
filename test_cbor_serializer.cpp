@@ -30,8 +30,8 @@
 #include <array>
 #include <iostream>
 #include <vector>
-#include "cbor/cbor.h"
 #include "cbor/stl.h"
+#include "cbor/cbor.h"
 
 using Data = std::vector<std::uint8_t>;
 
@@ -117,7 +117,6 @@ template <typename ...Data>
 std::size_t to_cbor(const Bar& b, cbor::detail::data_adapter<Data...> data)
 {
   std::cout << "to cbor adl" << std::endl;
-  //  cbor::to_cbor(b.f, data);
   to_cbor(b.f, data);
   return 0;
 }
@@ -147,6 +146,46 @@ void test_pod()
     Data result = {0x02};
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+  }
+}
+
+namespace cbor_object_ser
+{
+
+struct Buz
+{
+  std::uint32_t f;
+};
+
+std::size_t to_cbor(const Buz& b, cbor::cbor_object& data)
+{
+  std::cout << "to cbor_object_ser adl " << std::endl;
+  //  to_cbor(b.f, data);
+  cbor::serialize(b.f, data);
+  return 0;
+}
+
+} // namespace cbor_object_ser
+
+/*
+*/
+void test_into_object()
+{
+  {
+    cbor::cbor_object cbor_representation;
+    unsigned int input {2};
+    Data result = {0x02};
+    //  Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+  }
+  {
+    cbor::cbor_object cbor_representation;
+    cbor_object_ser::Buz z{2};
+    Data result = {0x02};
+    //  Data cbor_representation;
+    cbor::serialize(z, cbor_representation);   //<--------------------------
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
 }
@@ -202,7 +241,6 @@ void foo()
 }
 }
 
-#include <functional>
 int main(int /* argc */, char** /* argv */)
 {
   test_pod();
@@ -210,5 +248,7 @@ int main(int /* argc */, char** /* argv */)
   test_associatives();
   test_array();
   test_adl();
+  test_into_object();
+
   return 0;
 }

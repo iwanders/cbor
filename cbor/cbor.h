@@ -39,13 +39,13 @@ namespace cbor
 {
 
 template <typename T, typename... Data, typename detail::handled<T>::type = 0>
-std::size_t to_cbor(const T& v, detail::data_adapter<Data...> data)
+std::size_t to_cbor(const T& v, detail::data_adapter<Data...>& data)
 {
   return detail::traits<T>::serializer(v, data);
 }
 
 template <typename T, typename... Data, typename detail::not_handled<T>::type = 0>
-std::size_t to_cbor(const T& v, detail::data_adapter<Data...> data)
+std::size_t to_cbor(const T& v, detail::data_adapter<Data...>& data)
 {
   return to_cbor(v, data);
 }
@@ -62,14 +62,10 @@ namespace detail
  * @param data The data vector to serialize into.
  */
 template <typename T, typename... Data>
-std::size_t serialize(const T& v, Data&&... data)
+std::size_t serialize(const T& v,Data&&... data)
 {
-  //  using ::cbor::to_cbor;
   auto wrapper = detail::data_adapter<Data...>(std::forward<Data>(data)...);
-  // allow ADL lookup for types...
   return to_cbor(v, wrapper);
-  //  return detail::traits<T>::serializer(v, wrapper);
 }
-
 
 }  // namespace cbor
