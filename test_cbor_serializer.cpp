@@ -29,12 +29,10 @@
 */
 #include <array>
 #include <iostream>
-#include <nlohmann/json.hpp>
 #include <vector>
-#include "cbor.h"
-#include "spsc_ringbuffer.h"
+#include "include/cbor.h"
+#include "include/stl.h"
 
-using json = nlohmann::json;
 using Data = std::vector<std::uint8_t>;
 
 template <typename A, typename B>
@@ -42,8 +40,12 @@ void test(const A& a, const B& b)
 {
   if (a != b)
   {
-    std::cerr << "a (\n" << a << ") != b (\n" << b << ")" << std::endl;
+    std::cerr << "\033[31m" << "a (" << a << ") != b (" << b << ")" << "\033[0m" << std::endl;
     exit(1);
+  }
+  else
+  {
+    std::cerr << "\033[32m" << "a (" << a << ") == b (" << b << ")" << "\033[0m" << std::endl;
   }
 }
 
@@ -57,34 +59,7 @@ int main(int /* argc */, char** /* argv */)
   using EventContainer = std::vector<ScopeTraceEvent>;
   using EventMap = std::map<unsigned long, EventContainer>;
 
-  // This is what we need to match.
-  json events;
-  events["pid"] = std::uint64_t{ 1337 };
-  events["events"] =
-      EventMap{ { 141414, EventContainer{ { 1549943736559416, 20, 30 }, { 1549943736559417, 655351, 60 } } } };
-  const auto json_events_as_cbor = json::to_cbor(events);
-  std::cout << cbor::hexdump(json_events_as_cbor) << std::endl;
-
-  // json doesn't allow non-string keys in maps, so those are packed as lists of (key, value) pairs.
-
-  // Create map of string , cbor_object data
-  std::map<std::string, cbor::cbor_object> my_event_data;
-  // Add the pid entry.
-  my_event_data["pid"] = cbor::cbor_object::make(static_cast<unsigned long>(1337));
-
-  // Create the 'map' with a vector of tuples.
-  std::vector<std::tuple<unsigned long, EventContainer>> faux_event_map;
-  faux_event_map.push_back(
-      { 141414, EventContainer{ { 1549943736559416, 20, 30 }, { 1549943736559417, 655351, 60 } } });
-  my_event_data["events"] = cbor::cbor_object::make(faux_event_map);
-
-  // Serialize the map of cbor entries into the data.
-  Data events_as_cbor;
-  cbor::serialize(my_event_data, events_as_cbor);
-  std::cout << cbor::hexdump(events_as_cbor) << std::endl;  // print it
-
-  // test it! If this passes we can write data identical to nlohmann::json's to_cbor, but then lots faster.
-  test(cbor::hexdump(json_events_as_cbor), cbor::hexdump(events_as_cbor));
+/*
 
   // some values from https://github.com/cbor/test-vectors/blob/master/appendix_a.json
   // Test map
@@ -122,5 +97,18 @@ int main(int /* argc */, char** /* argv */)
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
+
+*/
+  unsigned int input{2};
+  Data result = {0x02};
+  Data cbor_representation;
+  cbor::serialize(input, cbor_representation);
+  test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+
+
+  std::array<cbor::DataType, 100> z;
+  std::size_t len = cbor::serialize(input, z.data(), z.size());
+  test(cbor::hexdump(result), cbor::hexdump(z, len));
   return 0;
 }
