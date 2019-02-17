@@ -186,6 +186,16 @@ struct traits<std::string>
   {
     return to_cbor(v.c_str(), data);
   }
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    std::uint64_t string_length;
+    std::size_t len = deserializeInteger(0b011, string_length, data);
+    v.clear();
+    v.insert(v.begin(), &(data[data.position()]), &(data[data.position()]) + string_length);
+    data.advance(string_length);
+    return len + string_length;
+  }
 };
 
 /**
@@ -205,6 +215,32 @@ struct traits<std::vector<T>>
       addition += to_cbor(k, data);
     }
     return addition;
+  }
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    std::uint8_t first_byte;
+    std::uint64_t length;
+    std::size_t len = deserializeItem(first_byte, length, data);
+    if ((first_byte >> 5) == 0b100)
+    {
+      // it is a list.
+      if ((first_byte & 0b11111) == 31)
+      {
+        // todo indefinite length...
+      }
+      else
+      {
+        v.reserve(length);
+        for (std::size_t i = 0; i < length; i++)
+        {
+          typename Type::value_type tmp;
+          len += from_cbor(tmp, data);
+          v.emplace_back(std::move(tmp));
+        }
+      }
+    }
+    return len;
   }
 };
 
@@ -268,6 +304,24 @@ struct traits<std::pair<A, B>>
     addition += to_cbor(v.second, data);
     return addition;
   }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    std::uint8_t first_byte;
+    std::uint64_t length;
+    std::size_t len = deserializeItem(first_byte, length, data);
+    if (first_byte == ((0b100 << 5)| 2))
+    {
+      len += from_cbor(v.first, data);
+      len += from_cbor(v.second, data);
+    }
+    else
+    {
+      // todo type incorrect
+    }
+    return len;
+  }
 };
 
 /**
@@ -290,6 +344,34 @@ struct traits<std::map<KeyType, ValueType>>
       addition += to_cbor(value, data);
     }
     return addition;
+  }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    std::uint8_t first_byte;
+    std::uint64_t length;
+    std::size_t len = deserializeItem(first_byte, length, data);
+    if ((first_byte >> 5) == 0b101)
+    {
+      // it is a map!
+      if ((first_byte & 0b11111) == 31)
+      {
+        // todo indefinite length...
+      }
+      else
+      {
+        for (std::size_t i = 0; i < length; i++)
+        {
+          typename Type::key_type key;
+          typename Type::mapped_type value;
+          len += from_cbor(key, data);
+          len += from_cbor(value, data);
+          v.emplace(std::move(key), std::move(value));
+        }
+      }
+    }
+    return len;
   }
 };
 

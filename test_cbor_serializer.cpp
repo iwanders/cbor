@@ -31,6 +31,7 @@
 #include <iostream>
 #include <vector>
 #include "cbor/stl.h"
+#include <algorithm>
 #include "cbor/cbor.h"
 
 using Data = std::vector<std::uint8_t>;
@@ -74,6 +75,12 @@ void test_associatives()
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    std::map<std::string, std::string> output;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(input.size(), output.size());
+    test(std::equal(input.begin(), input.end(), output.begin()), true);
   }
 }
 void test_stl()
@@ -86,6 +93,35 @@ void test_stl()
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
+  // test vector
+  {
+    std::vector<unsigned int> input{ 1, 2 };
+    Data result = { 0x82, 0x01, 0x02 };
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    std::vector<unsigned int> output;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(output.size(), input.size());
+    test(output[0], input[0]);
+    test(output[1], input[1]);
+  }
+
+  // test string
+  {
+    std::string input{"foo"};
+    Data result = { 0x63, 0x66, 0x6F, 0x6F };
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    std::string output;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(input, output);
+  }
 
   // test pair
   {
@@ -94,6 +130,13 @@ void test_stl()
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+
+    std::pair<unsigned int, unsigned int> output;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(output.first, input.first);
+    test(output.second, input.second);
   }
 }
 
