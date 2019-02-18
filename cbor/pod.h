@@ -63,6 +63,39 @@ struct write_adapter<DataType*, std::size_t>
 };
 
 
+template <>
+struct read_adapter<const DataType*&, const std::size_t&>
+{
+  const DataType* data;
+  std::size_t max_length;
+  std::size_t cursor = 0;
+  read_adapter<const DataType*, const std::size_t&>(const DataType*& d, const std::size_t size) : data{d}, max_length{size} {};
+  std::size_t position() const
+  {
+    return cursor;
+  }
+  void advance(std::size_t count)
+  {
+    cursor += count;
+    if (cursor >= max_length)
+    {
+      // Throw!?
+    }
+  }
+  std::size_t size() const
+  {
+    return max_length;
+  }
+  const DataType& operator[](std::size_t pos) const
+  {
+    if (pos >= max_length)
+    {
+      // Throw!?
+    }
+    return data[pos];
+  }
+};
+
 /**
  * @brief Function to write a 8 bit unsigned int in its shortest form given the major type.
  */

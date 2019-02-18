@@ -84,6 +84,9 @@ void test_associatives()
 
     cbor::cbor_object as_obj;
     cbor::serialize(input, as_obj);
+
+    std::cout << "map of strings:" << std::endl;
+    std::cout << as_obj.prettyPrint() << std::endl;
     cbor::cbor_object reinterpret_object;
     const Data cbor_data_from_obj = as_obj.serialized_;
     cbor::deserialize(reinterpret_object, cbor_data_from_obj);
@@ -151,6 +154,29 @@ void test_stl()
     test(output.first, input.first);
     test(output.second, input.second);
   }
+  // test vector of pairs
+  {
+    using Point = std::pair<int, int>;
+    using PointList = std::vector<Point>;
+    PointList input{{3, 7}, {90, 800}};
+    Data result = {0x82, 0x82, 0x03, 0x07, 0x82, 0x18, 0x5A, 0x19, 0x03, 0x20};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+
+    cbor::cbor_object single_obj;
+    cbor::serialize(input, single_obj);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    PointList read_back;
+    const Data z = cbor_representation;
+    cbor::deserialize(read_back, z);
+
+    std::vector<cbor::cbor_object> as_objects;
+    cbor::deserialize(as_objects, z);
+
+    std::cout << "List of pairs" << std::endl;
+    std::cout << single_obj.prettyPrint() << std::endl;
+  }
 }
 
 
@@ -161,6 +187,12 @@ void test_array()
   std::array<cbor::DataType, 100> z;
   std::size_t len = cbor::serialize(input, z.data(), z.size());
   test(cbor::hexdump(result), cbor::hexdump(z, len));
+
+  unsigned int read_back;
+  
+  const cbor::DataType* offset = z.data();
+  const std::size_t size = z.size();
+  cbor::deserialize(read_back, offset, size);
 }
 
 
@@ -378,6 +410,32 @@ void test_into_object()
     const Data cbor_data = cbor_representation.serialized_;
     cbor::deserialize(cbor_res, cbor_data);
     test(cbor::hexdump(cbor_res.serialized_), cbor::hexdump(cbor_data));
+  }
+
+  {
+    // test non homogeneous.
+    std::vector<cbor::cbor_object> z;
+
+    z.resize(3);
+    unsigned int x = 1337;
+    double f = 13.37;
+    std::map<int, cbor::cbor_object> y;
+    cbor::cbor_object my_three;
+    std::string foo = "foo";
+    cbor::serialize(foo, my_three);
+    y[-3] = my_three;
+    cbor::serialize(x, z[0]);
+    cbor::serialize(f, z[1]);
+    cbor::serialize(y, z[2]);
+    Data repr;
+
+    cbor::serialize(z, repr);
+    cbor::cbor_object cbor_res;
+    const Data cbor_data = repr;
+    cbor::deserialize(cbor_res, cbor_data);
+    test(cbor::hexdump(cbor_res.serialized_), cbor::hexdump(cbor_data));
+    std::cout << cbor_res.prettyPrint() << std::endl;
+    
   }
 }
 

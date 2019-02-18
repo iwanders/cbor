@@ -43,56 +43,6 @@ namespace cbor
 {
 using Data = std::vector<DataType>;
 
-std::string hexdump(const Data& d)
-{
-  std::stringstream ss;
-  for (const auto& v : d)
-  {
-    ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ v } << " ";
-  }
-  return ss.str();
-}
-
-template <std::size_t Length>
-std::string hexdump(const std::array<DataType, Length>& d, std::size_t max_length=Length)
-{
-  std::stringstream ss;
-  for (std::size_t i = 0; i < std::min(Length, max_length); i++)
-  {
-    ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ d[i] } << " ";
-  }
-  return ss.str();
-}
-
-/**
- * @brief An object to represent an already serialized compact binary object.
- */
-class cbor_object
-{
-public:
-  Data serialized_;
-  /**
-   * @brief Function to create a cbor_object that represents the value that was passed in during creation.
-   */
-  template <typename T>
-  static cbor_object make(const T& v)
-  {
-    cbor_object res;
-    serialize(v, res.serialized_);
-    return res;
-  }
-};
-std::string hexdump(const cbor_object& d)
-{
-  std::stringstream ss;
-  for (const auto& v : d.serialized_)
-  {
-    ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ v } << " ";
-  }
-  return ss.str();
-}
-
-
 namespace detail
 {
 
@@ -147,6 +97,157 @@ struct read_adapter<const Data&>
     return data[pos];
   }
 };
+}
+
+
+std::string hexdump(const Data& d)
+{
+  std::stringstream ss;
+  for (const auto& v : d)
+  {
+    ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ v } << " ";
+  }
+  return ss.str();
+}
+
+template <std::size_t Length>
+std::string hexdump(const std::array<DataType, Length>& d, std::size_t max_length=Length)
+{
+  std::stringstream ss;
+  for (std::size_t i = 0; i < std::min(Length, max_length); i++)
+  {
+    ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ d[i] } << " ";
+  }
+  return ss.str();
+}
+
+/**
+ * @brief An object to represent an already serialized compact binary object.
+ */
+class cbor_object
+{
+public:
+  Data serialized_;
+  /**
+   * @brief Function to create a cbor_object that represents the value that was passed in during creation.
+   */
+  template <typename T>
+  static cbor_object make(const T& v)
+  {
+    cbor_object res;
+    serialize(v, res.serialized_);
+    return res;
+  }
+
+  bool operator<(const cbor_object& a) const
+  {
+    return serialized_ < a.serialized_;
+  }
+
+  std::string prettyPrint(std::size_t indent = 0) const
+  {
+    //  Just copy the approppriate chunks into the object....
+    const Data& x = serialized_;
+    detail::read_adapter<const Data&> data = detail::read_adapter<const Data&>{x};
+    std::uint8_t first_byte = data[data.position()];
+    std::uint8_t major_type = first_byte >> 5;
+
+    std::stringstream ss;
+    auto ind = [&ss](std::size_t indent)
+    {
+      for (std::size_t i = 0 ; i < indent; i++)
+      {
+        ss << " ";
+      }
+    };
+    // simple fixed length and built in types:
+    if (major_type == 0b000)
+    {
+      std::uint64_t z;
+      from_cbor(z, data);
+      ind(indent);
+      ss << "int: " << z;
+    }
+    if (major_type == 0b001)
+    {
+      std::int64_t z;
+      from_cbor(z, data);
+      ind(indent);
+      ss << "negative int: " << z;
+    }
+
+    if (major_type == 0b111)
+    {
+      ind(indent);
+      ss << "0b111: ";
+    }
+
+    if (major_type == 0b100)
+    {
+      //  using ::cbor::from_cbor;
+      std::vector<cbor_object> z;
+      //  from_cbor(z, data);  // nope :(
+
+      const cbor::DataType* offset = &(data[data.position()]);
+      const std::size_t size = data.size() - data.position();
+      cbor::deserialize(z, offset, size); // yep :)
+      
+      ind(indent);
+      ss << "array #" << z.size() << std::endl;
+      
+      for (const auto& v : z)
+      {
+        ss << "" << v.prettyPrint(indent + 1) << std::endl;
+      }
+    }
+
+    if (major_type == 0b101)
+    {
+      std::map<cbor_object, cbor_object> z;
+      //  from_cbor(z, data);
+      const cbor::DataType* offset = &(data[data.position()]);
+      const std::size_t size = data.size() - data.position();
+      cbor::deserialize(z, offset, size); // yep :)
+
+      ind(indent);
+      ss << "map #" << z.size() << std::endl;
+      
+      for (const auto& k_v : z)
+      {
+        ind(indent+1);
+        ss << "" << k_v.first.prettyPrint() << "=> " << k_v.second.prettyPrint(indent + 1)  << std::endl;
+      }
+    }
+
+    // String-esque
+    if ((major_type == 0b010) || (major_type == 0b011))
+    {
+      std::string z;
+      //  from_cbor(z, data);
+      const cbor::DataType* offset = &(data[data.position()]);
+      const std::size_t size = data.size() - data.position();
+      cbor::deserialize(z, offset, size); // yep :)
+
+
+      ss << "str #" << z.size() << ":" << z;
+    }
+    return ss.str();
+  }
+};
+std::string hexdump(const cbor_object& d)
+{
+  std::stringstream ss;
+  for (const auto& v : d.serialized_)
+  {
+    ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ v } << " ";
+  }
+  return ss.str();
+}
+
+
+namespace detail
+{
+
 
 template <>
 struct write_adapter<cbor_object&>
@@ -500,7 +601,6 @@ struct traits<cbor_object>
       data.advance(value);
     }
     return len;
-    return 0;
   }
 };
 }  // namespace detail
