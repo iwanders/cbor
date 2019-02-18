@@ -166,20 +166,20 @@ public:
       std::uint64_t z;
       from_cbor(z, data);
       ind(indent);
-      ss << "int: " << z;
+      ss << "unsigned int: " << z << std::endl;
     }
     if (major_type == 0b001)
     {
       std::int64_t z;
       from_cbor(z, data);
       ind(indent);
-      ss << "negative int: " << z;
+      ss << "negative int: " << z << std::endl;
     }
 
     if (major_type == 0b111)
     {
       ind(indent);
-      ss << "0b111: ";
+      ss << "0b111: " << std::endl;
     }
 
     if (major_type == 0b100)
@@ -197,7 +197,7 @@ public:
       
       for (const auto& v : z)
       {
-        ss << "" << v.prettyPrint(indent + 1) << std::endl;
+        ss << v.prettyPrint(indent + 1);
       }
     }
 
@@ -214,8 +214,8 @@ public:
       
       for (const auto& k_v : z)
       {
-        ind(indent+1);
-        ss << "" << k_v.first.prettyPrint() << "=> " << k_v.second.prettyPrint(indent + 1)  << std::endl;
+        ss << k_v.first.prettyPrint(indent + 1);
+        ss << k_v.second.prettyPrint(indent + 1);
       }
     }
 
@@ -229,7 +229,8 @@ public:
       cbor::deserialize(z, offset, size); // yep :)
 
 
-      ss << "str #" << z.size() << ":" << z;
+      ind(indent);
+      ss << "str #" << z.size() << ":" << z << std::endl;
     }
     return ss.str();
   }
