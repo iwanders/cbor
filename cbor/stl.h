@@ -428,6 +428,80 @@ struct traits<cbor_object>
     }
     return v.size();
   }
+
+  template <typename Data>
+  static std::size_t deserializer(Type& v, Data& data)
+  {
+    //  Just copy the approppriate chunks into the object....
+    std::size_t start_pos = data.position();
+    std::uint8_t first_byte;
+    std::uint64_t value;
+    std::size_t len = deserializeItem(first_byte, value, data);
+    std::uint8_t major_type = first_byte >> 5;
+
+    auto copy_to_object = [&v, &data](std::size_t start, std::size_t length)
+    {
+      for (std::size_t i = start; i < (start + length); i++)
+      {
+        v.serialized_.emplace_back(data[i]);
+      }
+      return length;
+    };
+
+    // simple fixed length and built in types:
+    if ((major_type == 0b000) || (major_type == 0b001) || (major_type == 0b111))
+    {
+      return copy_to_object(start_pos, len);
+    }
+
+    if (major_type == 0b100)
+    {
+      // array.
+      if (first_byte == ((0b100 << 5) | 31))
+      {
+        // Todo handle indefinite.
+      }
+      // copy the start byte.
+      copy_to_object(start_pos, len);
+      for (std::size_t i = 0; i < value; i++)
+      {
+        len += deserializer(v, data);
+      }
+      return len;
+    }
+
+    if (major_type == 0b101)
+    {
+      // array.
+      if (first_byte == ((0b101 << 5) | 31))
+      {
+        // Todo handle indefinite.
+      }
+      // copy the start...
+      copy_to_object(start_pos, len);
+      for (std::size_t i = 0; i < value; i++)
+      {
+        len += deserializer(v, data);
+        len += deserializer(v, data);
+      }
+      return len;
+    }
+
+    // String-esque
+    if ((major_type == 0b010) || (major_type == 0b011))
+    {
+      // array.
+      if ((first_byte & 0b11111) == 31)
+      {
+        // Todo handle indefinite.
+      }
+      copy_to_object(start_pos, len);
+      len += copy_to_object(start_pos+len, value);
+      data.advance(value);
+    }
+    return len;
+    return 0;
+  }
 };
 }  // namespace detail
 }  // namespace cbor
