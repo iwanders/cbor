@@ -64,12 +64,17 @@ struct write_adapter<DataType*, std::size_t>
 
 
 template <>
-struct read_adapter<const DataType*&, const std::size_t&>
+struct read_adapter<const DataType*, const std::size_t>
 {
   const DataType* data;
   std::size_t max_length;
   std::size_t cursor = 0;
-  read_adapter<const DataType*, const std::size_t&>(const DataType*& d, const std::size_t size) : data{d}, max_length{size} {};
+  static read_adapter<const DataType*, const std::size_t> adapt(const DataType* d, const std::size_t s)
+  {
+    return read_adapter<const DataType*, const std::size_t> {d, s};
+  }
+
+  read_adapter<const DataType*, const std::size_t>(const DataType* d, const std::size_t size) : data{d}, max_length{size} {};
   std::size_t position() const
   {
     return cursor;
@@ -95,6 +100,11 @@ struct read_adapter<const DataType*&, const std::size_t&>
     return data[pos];
   }
 };
+template <> struct read_adapter<const DataType*&, const std::size_t&> : read_adapter<const DataType*, const std::size_t>{};
+template <> struct read_adapter<const DataType*&, std::size_t&> : read_adapter<const DataType*, const std::size_t>{};
+template <> struct read_adapter<DataType*&, const std::size_t&> : read_adapter<const DataType*, const std::size_t>{};
+template <> struct read_adapter<DataType*, std::size_t> : read_adapter<const DataType*, const std::size_t>{};
+
 
 /**
  * @brief Function to write a 8 bit unsigned int in its shortest form given the major type.

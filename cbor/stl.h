@@ -71,7 +71,12 @@ struct read_adapter<const Data&>
 {
   const Data& data;
   std::size_t cursor = 0;
+  static read_adapter<const Data&> adapt(const Data& d)
+  {
+    return read_adapter<const Data&>{d};
+  }
   read_adapter<const Data&>(const Data& d) : data{d} {};
+  //  read_adapter<const Data&>(Data& d) : data{d} {};
   std::size_t position() const
   {
     return cursor;
@@ -97,6 +102,7 @@ struct read_adapter<const Data&>
     return data[pos];
   }
 };
+template <> struct read_adapter<Data&> : read_adapter<const Data&>{};
 }
 
 
@@ -146,9 +152,8 @@ public:
 
   std::string prettyPrint(std::size_t indent = 0) const
   {
-    //  Just copy the approppriate chunks into the object....
-    const Data& x = serialized_;
-    detail::read_adapter<const Data&> data = detail::read_adapter<const Data&>{x};
+    // Create this bespoke read adapter without any copies.
+    detail::read_adapter<const Data&> data = detail::read_adapter<const Data&>{serialized_};
     std::uint8_t first_byte = data[data.position()];
     std::uint8_t major_type = first_byte >> 5;
 

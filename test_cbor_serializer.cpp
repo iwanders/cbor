@@ -191,8 +191,9 @@ void test_array()
   unsigned int read_back;
   
   const cbor::DataType* offset = z.data();
-  const std::size_t size = z.size();
+  std::size_t size = z.size();
   cbor::deserialize(read_back, offset, size);
+  //  cbor::deserialize(read_back, z.data(), z.size());
 }
 
 
@@ -245,7 +246,7 @@ void test_adl()
 void test_pod()
 {
   {
-    std::uint16_t input{50};
+    const std::uint16_t input{50};
     Data result = {0x18, 0x32};
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
@@ -431,63 +432,12 @@ void test_into_object()
 
     cbor::serialize(z, repr);
     cbor::cbor_object cbor_res;
-    const Data cbor_data = repr;
+    Data cbor_data = repr;
     cbor::deserialize(cbor_res, cbor_data);
     test(cbor::hexdump(cbor_res.serialized_), cbor::hexdump(cbor_data));
     std::cout << cbor_res.prettyPrint() << std::endl;
     
   }
-}
-
-namespace thing_test
-{
-template <typename T>
-struct z
-{
-  using Type = void;
-  template<typename D>
-  static void c(D&){};
-};
-
-template<>
-struct z<std::uint32_t>
-{
-  using Type = std::uint32_t;
-  template<typename D>
-  static std::uint32_t c(D&){};
-};
-
-
-template<typename T>
-using has_trait_helper = std::is_same<typename z<T>::Type, T>;
-template <typename T>
-using not_handled = typename std::enable_if<!has_trait_helper<T>::value, bool>;
-template <typename T>
-using handled = typename std::enable_if<has_trait_helper<T>::value, bool >;
-
-
-template <typename T, typename... Data, typename not_handled<T>::type = 0>
-void dispatch(T& x, Data...)
-{
-  std::cout << "Fallback: " << x << std::endl;
-}
-
-template <typename T, typename... Data, typename handled<T>::type = 0>
-void dispatch(T& x, Data...)
-{
-  std::cout << "specific is specific: " << x << std::endl;
-}
-
-
-void foo()
-{
-  std::uint32_t f32{32};
-  std::uint16_t f16{16};
-
-  int x = 0;
-  dispatch(f32, x);
-  dispatch(f16, x);
-}
 }
 
 int main(int /* argc */, char** /* argv */)
