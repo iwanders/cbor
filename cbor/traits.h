@@ -75,5 +75,25 @@ struct read_adapter
     static_assert(std::is_same<Arg0, bool>::value, "Read adapter not found for this type.");
   }
 };
+
+template<typename T>
+struct always_add_const
+{
+  using type = const T;
+};
+
+template<typename T>
+struct always_add_const<T&>
+{
+  using type = const T&;
+};
+
+// Make all template arguments const!
+template <typename... Ts> struct const_read_adapter
+{
+  using type = read_adapter<typename always_add_const<Ts>::type...>;
+};
+
+
 }  // namespace detail
 }  // namespace cbor

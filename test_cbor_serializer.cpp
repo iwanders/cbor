@@ -34,6 +34,42 @@
 #include "cbor/stl.h"
 #include "cbor/cbor.h"
 
+
+#include <type_traits>
+#include <typeinfo>
+#   include <cxxabi.h>
+#include <memory>
+#include <string>
+#include <cstdlib>
+
+// https://stackoverflow.com/a/20170989
+template <class T>
+std::string
+type_name()
+{
+    typedef typename std::remove_reference<T>::type TR;
+    std::unique_ptr<char, void(*)(void*)> own
+           (
+                abi::__cxa_demangle(typeid(TR).name(), nullptr,
+                                           nullptr, nullptr),
+                std::free
+           );
+    std::string r = own != nullptr ? own.get() : typeid(TR).name();
+    if (std::is_const<TR>::value)
+        r += " const";
+    if (std::is_volatile<TR>::value)
+        r += " volatile";
+    if (std::is_lvalue_reference<T>::value)
+        r += "&";
+    else if (std::is_rvalue_reference<T>::value)
+        r += "&&";
+    return r;
+}
+
+
+
+
+
 using Data = std::vector<std::uint8_t>;
 
 bool failed = false;
@@ -193,7 +229,7 @@ void test_array()
   const cbor::DataType* offset = z.data();
   std::size_t size = z.size();
   cbor::deserialize(read_back, offset, size);
-  //  cbor::deserialize(read_back, z.data(), z.size());
+  cbor::deserialize(read_back, z.data(), z.size());
 }
 
 
@@ -440,6 +476,58 @@ void test_into_object()
   }
 }
 
+
+namespace add_const_test
+{
+
+template <typename... Ts>
+struct packstore
+{
+  static void foo()
+  {
+    packstore<Ts...> x;
+    std::cout << type_name<decltype(x)>() << std::endl;
+  }
+};
+
+
+template<typename T>
+struct always_add_const
+{
+  using type = const T;
+};
+
+template<typename T>
+struct always_add_const<T&>
+{
+  using type = const T&;
+};
+template <typename... Ts> struct const_read_adapter
+{
+  //  using type = packstore<typename std::add_const<Ts>::type...>;  // doesnt deal with references.
+  using type = packstore<typename always_add_const<Ts>::type...>;
+};
+
+
+
+
+void test_const()
+{
+  //  list<int>::type z = 3;
+  const_read_adapter<int, bool>::type z; z.foo();
+  const_read_adapter<int, bool>::type x; x.foo();
+  const_read_adapter<int, bool, std::vector<int>>::type ee; ee.foo();
+  const_read_adapter<int, bool, std::vector<int>&>::type cc; cc.foo();
+  const_read_adapter<int, bool, std::vector<int>>::type c; c.foo();
+  //  add_consts<int, bool> x = 0;
+  //  std::cout << type_name<decltype(z)>() << std::endl;
+  //  std::cout << type_name<decltype(x)>() << std::endl;
+  //  auto y = make_const_tuple<int, bool>();
+  //  std::cout << type_name<decltype(y)>() << std::endl;
+}
+
+}
+
 int main(int /* argc */, char** /* argv */)
 {
   test_pod();
@@ -448,6 +536,7 @@ int main(int /* argc */, char** /* argv */)
   test_array();
   test_adl();
   test_into_object();
+  add_const_test::test_const();
 
   return failed;
 }

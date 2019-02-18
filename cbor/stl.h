@@ -102,7 +102,7 @@ struct read_adapter<const Data&>
     return data[pos];
   }
 };
-template <> struct read_adapter<Data&> : read_adapter<const Data&>{};
+//  template <> struct read_adapter<Data&> : read_adapter<const Data&>{};
 }
 
 

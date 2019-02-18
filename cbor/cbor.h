@@ -84,7 +84,9 @@ std::size_t serialize(const T& v,Data&&... data)
 template <typename T, typename... Data>
 std::size_t deserialize(T& v, Data&&... data)
 {
-  auto wrapper = detail::read_adapter<Data...>::adapt(std::forward<Data>(data)...);
+  using const_adaptor = detail::const_read_adapter<Data...>;
+  auto wrapper = const_adaptor::type::adapt(std::forward<Data>(data)...);
+  //  auto wrapper = detail::read_adapter<Data...>::adapt(std::forward<Data>(data)...);
   return from_cbor(v, wrapper);
 }
 }  // namespace cbor

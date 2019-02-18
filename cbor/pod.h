@@ -100,10 +100,8 @@ struct read_adapter<const DataType*, const std::size_t>
     return data[pos];
   }
 };
-template <> struct read_adapter<const DataType*&, const std::size_t&> : read_adapter<const DataType*, const std::size_t>{};
-template <> struct read_adapter<const DataType*&, std::size_t&> : read_adapter<const DataType*, const std::size_t>{};
-template <> struct read_adapter<DataType*&, const std::size_t&> : read_adapter<const DataType*, const std::size_t>{};
-template <> struct read_adapter<DataType*, std::size_t> : read_adapter<const DataType*, const std::size_t>{};
+template <> struct read_adapter<const DataType* const &, const std::size_t&> : read_adapter<const DataType*, const std::size_t>{};
+template <> struct read_adapter<DataType* const, const std::size_t> : read_adapter<const DataType*, const std::size_t>{};
 
 
 /**
