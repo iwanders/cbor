@@ -32,22 +32,21 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
-#include "util.h"
-#include "traits.h"
 #include "cbor.h"
+#include "traits.h"
+#include "util.h"
 
 namespace cbor
 {
 namespace detail
 {
-
 template <>
 struct write_adapter<DataType*, std::size_t>
 {
   DataType* data;
   std::size_t max_length;
-  std::size_t used_size { 0 };
-  write_adapter<DataType*, std::size_t>(DataType* d, std::size_t size) : data{d}, max_length{size} {};
+  std::size_t used_size{ 0 };
+  write_adapter<DataType*, std::size_t>(DataType* d, std::size_t size) : data{ d }, max_length{ size } {};
   void resize(std::uint32_t value)
   {
     used_size = value;
@@ -62,7 +61,6 @@ struct write_adapter<DataType*, std::size_t>
   }
 };
 
-
 template <>
 struct read_adapter<const DataType*, const std::size_t>
 {
@@ -71,10 +69,11 @@ struct read_adapter<const DataType*, const std::size_t>
   std::size_t cursor = 0;
   static read_adapter<const DataType*, const std::size_t> adapt(const DataType* d, const std::size_t s)
   {
-    return read_adapter<const DataType*, const std::size_t> {d, s};
+    return read_adapter<const DataType*, const std::size_t>{ d, s };
   }
 
-  read_adapter<const DataType*, const std::size_t>(const DataType* d, const std::size_t size) : data{d}, max_length{size} {};
+  read_adapter<const DataType*, const std::size_t>(const DataType* d, const std::size_t size)
+    : data{ d }, max_length{ size } {};
   std::size_t position() const
   {
     return cursor;
@@ -100,9 +99,14 @@ struct read_adapter<const DataType*, const std::size_t>
     return data[pos];
   }
 };
-template <> struct read_adapter<const DataType* const &, const std::size_t&> : read_adapter<const DataType*, const std::size_t>{};
-template <> struct read_adapter<DataType* const, const std::size_t> : read_adapter<const DataType*, const std::size_t>{};
-
+template <>
+struct read_adapter<const DataType* const&, const std::size_t&> : read_adapter<const DataType*, const std::size_t>
+{
+};
+template <>
+struct read_adapter<DataType* const, const std::size_t> : read_adapter<const DataType*, const std::size_t>
+{
+};
 
 /**
  * @brief Function to write a 8 bit unsigned int in its shortest form given the major type.
@@ -377,7 +381,6 @@ struct traits<std::nullptr_t>
   }
 };
 
-
 /**
  * Specialization for unsigned_integers.
  */
@@ -398,10 +401,22 @@ struct unsigned_integer
     return deserializeInteger(0b000, v, data);
   }
 };
-template<> struct traits<std::uint8_t> : unsigned_integer<std::uint8_t>{};
-template<> struct traits<std::uint16_t> : unsigned_integer<std::uint16_t>{};
-template<> struct traits<std::uint32_t> : unsigned_integer<std::uint32_t>{};
-template<> struct traits<std::uint64_t> : unsigned_integer<std::uint64_t>{};
+template <>
+struct traits<std::uint8_t> : unsigned_integer<std::uint8_t>
+{
+};
+template <>
+struct traits<std::uint16_t> : unsigned_integer<std::uint16_t>
+{
+};
+template <>
+struct traits<std::uint32_t> : unsigned_integer<std::uint32_t>
+{
+};
+template <>
+struct traits<std::uint64_t> : unsigned_integer<std::uint64_t>
+{
+};
 
 /**
  * Specialization for signed_integers.
@@ -416,7 +431,7 @@ struct signed_integer
   {
     if (v < 0)
     {
-      return serializeItem(0b001, static_cast<typename std::make_unsigned<IntegerType>::type>(-v-1), data);
+      return serializeItem(0b001, static_cast<typename std::make_unsigned<IntegerType>::type>(-v - 1), data);
     }
     else
     {
@@ -429,11 +444,22 @@ struct signed_integer
     return deserializeSignedInteger(v, data);
   }
 };
-template<> struct traits<std::int8_t> : signed_integer<std::int8_t>{};
-template<> struct traits<std::int16_t> : signed_integer<std::int16_t>{};
-template<> struct traits<std::int32_t> : signed_integer<std::int32_t>{};
-template<> struct traits<std::int64_t> : signed_integer<std::int64_t>{};
-
+template <>
+struct traits<std::int8_t> : signed_integer<std::int8_t>
+{
+};
+template <>
+struct traits<std::int16_t> : signed_integer<std::int16_t>
+{
+};
+template <>
+struct traits<std::int32_t> : signed_integer<std::int32_t>
+{
+};
+template <>
+struct traits<std::int64_t> : signed_integer<std::int64_t>
+{
+};
 
 /**
  * Specialization for float.
@@ -510,7 +536,6 @@ struct traits<double>
     return 0;
   }
 };
-
 
 /**
  * Specialization for const char*

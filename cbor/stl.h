@@ -30,14 +30,14 @@
 
 #pragma once
 #include <cstdint>
+#include <iomanip>
 #include <limits>
 #include <map>
 #include <tuple>
 #include <vector>
-#include <iomanip>
-#include "util.h"
-#include "traits.h"
 #include "cbor.h"
+#include "traits.h"
+#include "util.h"
 
 namespace cbor
 {
@@ -45,12 +45,11 @@ using Data = std::vector<DataType>;
 
 namespace detail
 {
-
 template <>
 struct write_adapter<Data&>
 {
   Data& data;
-  write_adapter<Data&>(Data& d) : data{d} {};
+  write_adapter<Data&>(Data& d) : data{ d } {};
 
   void resize(std::size_t value)
   {
@@ -73,9 +72,9 @@ struct read_adapter<const Data&>
   std::size_t cursor = 0;
   static read_adapter<const Data&> adapt(const Data& d)
   {
-    return read_adapter<const Data&>{d};
+    return read_adapter<const Data&>{ d };
   }
-  read_adapter<const Data&>(const Data& d) : data{d} {};
+  read_adapter<const Data&>(const Data& d) : data{ d } {};
   //  read_adapter<const Data&>(Data& d) : data{d} {};
   std::size_t position() const
   {
@@ -103,8 +102,7 @@ struct read_adapter<const Data&>
   }
 };
 //  template <> struct read_adapter<Data&> : read_adapter<const Data&>{};
-}
-
+}  // namespace detail
 
 std::string hexdump(const Data& d)
 {
@@ -117,7 +115,7 @@ std::string hexdump(const Data& d)
 }
 
 template <std::size_t Length>
-std::string hexdump(const std::array<DataType, Length>& d, std::size_t max_length=Length)
+std::string hexdump(const std::array<DataType, Length>& d, std::size_t max_length = Length)
 {
   std::stringstream ss;
   for (std::size_t i = 0; i < std::min(Length, max_length); i++)
@@ -153,14 +151,13 @@ public:
   std::string prettyPrint(std::size_t indent = 0) const
   {
     // Create this bespoke read adapter without any copies.
-    detail::read_adapter<const Data&> data = detail::read_adapter<const Data&>{serialized_};
+    detail::read_adapter<const Data&> data = detail::read_adapter<const Data&>{ serialized_ };
     std::uint8_t first_byte = data[data.position()];
     std::uint8_t major_type = first_byte >> 5;
 
     std::stringstream ss;
-    auto ind = [&ss](std::size_t indent)
-    {
-      for (std::size_t i = 0 ; i < indent; i++)
+    auto ind = [&ss](std::size_t indent) {
+      for (std::size_t i = 0; i < indent; i++)
       {
         ss << " ";
       }
@@ -195,11 +192,11 @@ public:
 
       const cbor::DataType* offset = &(data[data.position()]);
       const std::size_t size = data.size() - data.position();
-      cbor::deserialize(z, offset, size); // yep :)
-      
+      cbor::deserialize(z, offset, size);  // yep :)
+
       ind(indent);
       ss << "array #" << z.size() << std::endl;
-      
+
       for (const auto& v : z)
       {
         ss << v.prettyPrint(indent + 1);
@@ -212,11 +209,11 @@ public:
       //  from_cbor(z, data);
       const cbor::DataType* offset = &(data[data.position()]);
       const std::size_t size = data.size() - data.position();
-      cbor::deserialize(z, offset, size); // yep :)
+      cbor::deserialize(z, offset, size);  // yep :)
 
       ind(indent);
       ss << "map #" << z.size() << std::endl;
-      
+
       for (const auto& k_v : z)
       {
         ss << k_v.first.prettyPrint(indent + 1);
@@ -231,8 +228,7 @@ public:
       //  from_cbor(z, data);
       const cbor::DataType* offset = &(data[data.position()]);
       const std::size_t size = data.size() - data.position();
-      cbor::deserialize(z, offset, size); // yep :)
-
+      cbor::deserialize(z, offset, size);  // yep :)
 
       ind(indent);
       ss << "str #" << z.size() << ":" << z << std::endl;
@@ -250,16 +246,13 @@ std::string hexdump(const cbor_object& d)
   return ss.str();
 }
 
-
 namespace detail
 {
-
-
 template <>
 struct write_adapter<cbor_object&>
 {
   cbor_object& o;
-  write_adapter<cbor_object&>(cbor_object& d) : o{d} {};
+  write_adapter<cbor_object&>(cbor_object& d) : o{ d } {};
 
   void resize(std::uint32_t value)
   {
@@ -452,7 +445,7 @@ struct traits<std::pair<A, B>>
     std::uint8_t first_byte;
     std::uint64_t length;
     std::size_t len = deserializeItem(first_byte, length, data);
-    if (first_byte == ((0b100 << 5)| 2))
+    if (first_byte == ((0b100 << 5) | 2))
     {
       len += from_cbor(v.first, data);
       len += from_cbor(v.second, data);
@@ -546,8 +539,7 @@ struct traits<cbor_object>
     std::size_t len = deserializeItem(first_byte, value, data);
     std::uint8_t major_type = first_byte >> 5;
 
-    auto copy_to_object = [&v, &data](std::size_t start, std::size_t length)
-    {
+    auto copy_to_object = [&v, &data](std::size_t start, std::size_t length) {
       for (std::size_t i = start; i < (start + length); i++)
       {
         v.serialized_.emplace_back(data[i]);
@@ -603,7 +595,7 @@ struct traits<cbor_object>
         // Todo handle indefinite.
       }
       copy_to_object(start_pos, len);
-      len += copy_to_object(start_pos+len, value);
+      len += copy_to_object(start_pos + len, value);
       data.advance(value);
     }
     return len;

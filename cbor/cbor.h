@@ -31,13 +31,12 @@
 
 #include <cstdint>
 #include <limits>
-#include "util.h"
-#include "traits.h"
 #include "pod.h"
+#include "traits.h"
+#include "util.h"
 
 namespace cbor
 {
-
 template <typename T, typename... Data, typename detail::handled<T>::type = 0>
 std::size_t to_cbor(const T& v, detail::write_adapter<Data...>& data)
 {
@@ -64,10 +63,10 @@ std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
 
 namespace detail
 {
-  // bump from the detail namespace up to the non detail namespace to allow ADL to apply on the data helper.
-  using ::cbor::to_cbor;
-  using ::cbor::from_cbor;
-}
+// bump from the detail namespace up to the non detail namespace to allow ADL to apply on the data helper.
+using ::cbor::from_cbor;
+using ::cbor::to_cbor;
+}  // namespace detail
 
 /**
  * @brief Entry to the trait system, serializes v into data.
@@ -75,7 +74,7 @@ namespace detail
  * @param data The data vector to serialize into.
  */
 template <typename T, typename... Data>
-std::size_t serialize(const T& v,Data&&... data)
+std::size_t serialize(const T& v, Data&&... data)
 {
   auto wrapper = detail::write_adapter<Data...>(std::forward<Data>(data)...);
   return to_cbor(v, wrapper);

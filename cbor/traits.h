@@ -51,12 +51,12 @@ struct traits
 };
 
 // some helpers....
-template<typename T>
+template <typename T>
 using has_trait_helper = std::is_same<typename traits<T>::Type, T>;
 template <typename T>
 using not_handled = typename std::enable_if<!has_trait_helper<T>::value, bool>;
 template <typename T>
-using handled = typename std::enable_if<has_trait_helper<T>::value, bool >;
+using handled = typename std::enable_if<has_trait_helper<T>::value, bool>;
 // To do sfinae; , typename not_handled<T>::type = 0
 
 template <typename Arg0, typename... Data>
@@ -76,24 +76,24 @@ struct read_adapter
   }
 };
 
-template<typename T>
+template <typename T>
 struct always_add_const
 {
   using type = const T;
 };
 
-template<typename T>
+template <typename T>
 struct always_add_const<T&>
 {
   using type = const T&;
 };
 
 // Make all template arguments const!
-template <typename... Ts> struct const_read_adapter
+template <typename... Ts>
+struct const_read_adapter
 {
   using type = read_adapter<typename always_add_const<Ts>::type...>;
 };
-
 
 }  // namespace detail
 }  // namespace cbor

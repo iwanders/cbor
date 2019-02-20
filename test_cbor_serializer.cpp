@@ -27,48 +27,38 @@
   OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <vector>
-#include <algorithm>
-#include "cbor/stl.h"
 #include "cbor/cbor.h"
+#include "cbor/stl.h"
 
-
-#include <type_traits>
-#include <typeinfo>
-#   include <cxxabi.h>
+#include <cxxabi.h>
+#include <cstdlib>
 #include <memory>
 #include <string>
-#include <cstdlib>
+#include <type_traits>
+#include <typeinfo>
 
 // https://stackoverflow.com/a/20170989
 template <class T>
-std::string
-type_name()
+std::string type_name()
 {
-    typedef typename std::remove_reference<T>::type TR;
-    std::unique_ptr<char, void(*)(void*)> own
-           (
-                abi::__cxa_demangle(typeid(TR).name(), nullptr,
-                                           nullptr, nullptr),
-                std::free
-           );
-    std::string r = own != nullptr ? own.get() : typeid(TR).name();
-    if (std::is_const<TR>::value)
-        r += " const";
-    if (std::is_volatile<TR>::value)
-        r += " volatile";
-    if (std::is_lvalue_reference<T>::value)
-        r += "&";
-    else if (std::is_rvalue_reference<T>::value)
-        r += "&&";
-    return r;
+  typedef typename std::remove_reference<T>::type TR;
+  std::unique_ptr<char, void (*)(void*)> own(abi::__cxa_demangle(typeid(TR).name(), nullptr, nullptr, nullptr),
+                                             std::free);
+  std::string r = own != nullptr ? own.get() : typeid(TR).name();
+  if (std::is_const<TR>::value)
+    r += " const";
+  if (std::is_volatile<TR>::value)
+    r += " volatile";
+  if (std::is_lvalue_reference<T>::value)
+    r += "&";
+  else if (std::is_rvalue_reference<T>::value)
+    r += "&&";
+  return r;
 }
-
-
-
-
 
 using Data = std::vector<std::uint8_t>;
 
@@ -79,15 +69,18 @@ void test(const A& a, const B& b)
 {
   if (a != b)
   {
-    std::cerr << "\033[31m" << "a (" << a << ") != b (" << b << ")" << "\033[0m" << std::endl;
+    std::cerr << "\033[31m"
+              << "a (" << a << ") != b (" << b << ")"
+              << "\033[0m" << std::endl;
     failed = true;
   }
   else
   {
-    std::cerr << "\033[32m" << "a (" << a << ") == b (" << b << ")" << "\033[0m" << std::endl;
+    std::cerr << "\033[32m"
+              << "a (" << a << ") == b (" << b << ")"
+              << "\033[0m" << std::endl;
   }
 }
-
 
 /*
 
@@ -163,7 +156,7 @@ void test_stl()
 
   // test string
   {
-    std::string input{"foo"};
+    std::string input{ "foo" };
     Data result = { 0x63, 0x66, 0x6F, 0x6F };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
@@ -183,7 +176,6 @@ void test_stl()
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
-
     std::pair<unsigned int, unsigned int> output;
     const Data cbor_data = cbor_representation;
     cbor::deserialize(output, cbor_data);
@@ -194,8 +186,8 @@ void test_stl()
   {
     using Point = std::pair<int, int>;
     using PointList = std::vector<Point>;
-    PointList input{{3, 7}, {90, 800}};
-    Data result = {0x82, 0x82, 0x03, 0x07, 0x82, 0x18, 0x5A, 0x19, 0x03, 0x20};
+    PointList input{ { 3, 7 }, { 90, 800 } };
+    Data result = { 0x82, 0x82, 0x03, 0x07, 0x82, 0x18, 0x5A, 0x19, 0x03, 0x20 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
 
@@ -215,23 +207,21 @@ void test_stl()
   }
 }
 
-
 void test_array()
 {
-  unsigned int input{2};
-  Data result = {0x02};
+  unsigned int input{ 2 };
+  Data result = { 0x02 };
   std::array<cbor::DataType, 100> z;
   std::size_t len = cbor::serialize(input, z.data(), z.size());
   test(cbor::hexdump(result), cbor::hexdump(z, len));
 
   unsigned int read_back;
-  
+
   const cbor::DataType* offset = z.data();
   std::size_t size = z.size();
   cbor::deserialize(read_back, offset, size);
   cbor::deserialize(read_back, z.data(), z.size());
 }
-
 
 namespace foo
 {
@@ -240,7 +230,7 @@ struct Bar
   std::uint32_t f;
 };
 
-template <typename ...Data>
+template <typename... Data>
 std::size_t to_cbor(const Bar& b, cbor::detail::write_adapter<Data...> data)
 {
   std::cout << "to cbor adl" << std::endl;
@@ -248,7 +238,7 @@ std::size_t to_cbor(const Bar& b, cbor::detail::write_adapter<Data...> data)
   return 0;
 }
 
-template <typename ...Data>
+template <typename... Data>
 std::size_t from_cbor(Bar& b, cbor::detail::read_adapter<Data...> data)
 {
   std::cout << "from_cbor adl" << std::endl;
@@ -256,19 +246,19 @@ std::size_t from_cbor(Bar& b, cbor::detail::read_adapter<Data...> data)
   return 0;
 }
 
-}
+}  // namespace foo
 void test_adl()
 {
   {
-    foo::Bar input{2};
-    Data result = {0x02};
+    foo::Bar input{ 2 };
+    Data result = { 0x02 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
   {
-    std::vector<foo::Bar> input = {foo::Bar{2}, foo::Bar{3}, foo::Bar{4}};
-    Data result = {0x83, 0x02, 0x03, 0x04};
+    std::vector<foo::Bar> input = { foo::Bar{ 2 }, foo::Bar{ 3 }, foo::Bar{ 4 } };
+    Data result = { 0x83, 0x02, 0x03, 0x04 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -282,8 +272,8 @@ void test_adl()
 void test_pod()
 {
   {
-    const std::uint8_t input{50};
-    Data result = {0x18, 0x32};
+    const std::uint8_t input{ 50 };
+    Data result = { 0x18, 0x32 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -294,8 +284,8 @@ void test_pod()
     test(input, output);
   }
   {
-    const std::int8_t input{-50};
-    Data result = {0x38, 0x31};
+    const std::int8_t input{ -50 };
+    Data result = { 0x38, 0x31 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -306,8 +296,8 @@ void test_pod()
     test(input, output);
   }
   {
-    const std::uint16_t input{50};
-    Data result = {0x18, 0x32};
+    const std::uint16_t input{ 50 };
+    Data result = { 0x18, 0x32 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -318,8 +308,8 @@ void test_pod()
     test(input, output);
   }
   {
-    unsigned int input{2};
-    Data result = {0x02};
+    unsigned int input{ 2 };
+    Data result = { 0x02 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -330,8 +320,8 @@ void test_pod()
     test(input, output);
   }
   {
-    double input{13377.1414};
-    Data result = {0xFB, 0x40, 0xCA, 0x20, 0x92, 0x19, 0x65, 0x2B, 0xD4};
+    double input{ 13377.1414 };
+    Data result = { 0xFB, 0x40, 0xCA, 0x20, 0x92, 0x19, 0x65, 0x2B, 0xD4 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -342,8 +332,8 @@ void test_pod()
     test(input, output);
   }
   {
-    float input{6.3125};
-    Data result = {0xFA, 0x40, 0xCA, 0x00, 0x00};
+    float input{ 6.3125 };
+    Data result = { 0xFA, 0x40, 0xCA, 0x00, 0x00 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -354,14 +344,14 @@ void test_pod()
     test(input, output);
   }
   {
-    Data result = {0xF6};
+    Data result = { 0xF6 };
     Data cbor_representation;
     cbor::serialize(nullptr, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
   {
-    int input{2};
-    Data result = {0x02};
+    int input{ 2 };
+    Data result = { 0x02 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -371,8 +361,8 @@ void test_pod()
     cbor::deserialize(output, cbor_data);
     test(input, output);
 
-    int input2{-2};
-    Data result2 = {0x21};
+    int input2{ -2 };
+    Data result2 = { 0x21 };
     cbor_representation.resize(0);
     cbor::serialize(input2, cbor_representation);
     test(cbor::hexdump(result2), cbor::hexdump(cbor_representation));
@@ -384,7 +374,7 @@ void test_pod()
   }
   {
     bool bool_val = true;
-    Data result = {0xF5};
+    Data result = { 0xF5 };
     Data cbor_representation;
     cbor::serialize(bool_val, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -395,7 +385,7 @@ void test_pod()
     test(bool_val, output);
 
     bool_val = false;
-    Data result2 = {0xF4};
+    Data result2 = { 0xF4 };
     cbor_representation.resize(0);
     cbor::serialize(bool_val, cbor_representation);
     test(cbor::hexdump(result2), cbor::hexdump(cbor_representation));
@@ -409,7 +399,6 @@ void test_pod()
 
 namespace cbor_object_ser
 {
-
 struct Buz
 {
   std::uint32_t f;
@@ -423,16 +412,16 @@ std::size_t to_cbor(const Buz& b, cbor::cbor_object& data)
   return 0;
 }
 
-} // namespace cbor_object_ser
+}  // namespace cbor_object_ser
 
 /*
-*/
+ */
 void test_into_object()
 {
   {
     cbor::cbor_object cbor_representation;
-    unsigned int input {2};
-    Data result = {0x02};
+    unsigned int input{ 2 };
+    Data result = { 0x02 };
     //  Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -440,16 +429,16 @@ void test_into_object()
 
   {
     cbor::cbor_object cbor_representation;
-    cbor_object_ser::Buz z{2};
-    Data result = {0x02};
+    cbor_object_ser::Buz z{ 2 };
+    Data result = { 0x02 };
     //  Data cbor_representation;
     cbor::serialize(z, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
 
   {
-    unsigned int input {2};
-    Data result = {0x02};
+    unsigned int input{ 2 };
+    Data result = { 0x02 };
     Data cbor_representation;
     cbor::serialize(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
@@ -496,14 +485,11 @@ void test_into_object()
     cbor::deserialize(cbor_res, cbor_data);
     test(cbor::hexdump(cbor_res.serialized_), cbor::hexdump(cbor_data));
     std::cout << cbor_res.prettyPrint() << std::endl;
-    
   }
 }
 
-
 namespace add_const_test
 {
-
 template <typename... Ts>
 struct packstore
 {
@@ -514,35 +500,37 @@ struct packstore
   }
 };
 
-
-template<typename T>
+template <typename T>
 struct always_add_const
 {
   using type = const T;
 };
 
-template<typename T>
+template <typename T>
 struct always_add_const<T&>
 {
   using type = const T&;
 };
-template <typename... Ts> struct const_read_adapter
+template <typename... Ts>
+struct const_read_adapter
 {
   //  using type = packstore<typename std::add_const<Ts>::type...>;  // doesnt deal with references.
   using type = packstore<typename always_add_const<Ts>::type...>;
 };
 
-
-
-
 void test_const()
 {
   //  list<int>::type z = 3;
-  const_read_adapter<int, bool>::type z; z.foo();
-  const_read_adapter<int, bool>::type x; x.foo();
-  const_read_adapter<int, bool, std::vector<int>>::type ee; ee.foo();
-  const_read_adapter<int, bool, std::vector<int>&>::type cc; cc.foo();
-  const_read_adapter<int, bool, std::vector<int>>::type c; c.foo();
+  const_read_adapter<int, bool>::type z;
+  z.foo();
+  const_read_adapter<int, bool>::type x;
+  x.foo();
+  const_read_adapter<int, bool, std::vector<int>>::type ee;
+  ee.foo();
+  const_read_adapter<int, bool, std::vector<int>&>::type cc;
+  cc.foo();
+  const_read_adapter<int, bool, std::vector<int>>::type c;
+  c.foo();
   //  add_consts<int, bool> x = 0;
   //  std::cout << type_name<decltype(z)>() << std::endl;
   //  std::cout << type_name<decltype(x)>() << std::endl;
@@ -550,7 +538,7 @@ void test_const()
   //  std::cout << type_name<decltype(y)>() << std::endl;
 }
 
-}
+}  // namespace add_const_test
 
 int main(int /* argc */, char** /* argv */)
 {
