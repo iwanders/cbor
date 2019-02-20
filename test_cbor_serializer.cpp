@@ -282,6 +282,30 @@ void test_adl()
 void test_pod()
 {
   {
+    const std::uint8_t input{50};
+    Data result = {0x18, 0x32};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    std::uint8_t output = 0;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(input, output);
+  }
+  {
+    const std::int8_t input{-50};
+    Data result = {0x38, 0x31};
+    Data cbor_representation;
+    cbor::serialize(input, cbor_representation);
+    test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
+
+    std::int8_t output = 0;
+    const Data cbor_data = cbor_representation;
+    cbor::deserialize(output, cbor_data);
+    test(input, output);
+  }
+  {
     const std::uint16_t input{50};
     Data result = {0x18, 0x32};
     Data cbor_representation;

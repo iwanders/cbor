@@ -379,52 +379,13 @@ struct traits<std::nullptr_t>
 
 
 /**
- * Specialization for uint8_t.
+ * Specialization for unsigned_integers.
  */
-template <>
-struct traits<std::uint8_t>
+template <typename IntegerType>
+struct unsigned_integer
 {
-  using Type = std::uint8_t;
+  using Type = IntegerType;
 
-  template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
-  {
-    return serializeItem(0b000, v, data);
-  }
-
-  template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
-  {
-    return deserializeSignedInteger(v, data);
-  }
-};
-
-/**
- * Specialization for uint16_t.
- */
-template <>
-struct traits<std::uint16_t>
-{
-  using Type = std::uint16_t;
-  template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
-  {
-    return serializeItem(0b000, v, data);
-  }
-  template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
-  {
-    return deserializeInteger(0b000, v, data);
-  }
-};
-
-/**
- * Specialization for uint32_t.
- */
-template <>
-struct traits<std::uint32_t>
-{
-  using Type = std::uint32_t;
   template <typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
@@ -437,44 +398,29 @@ struct traits<std::uint32_t>
     return deserializeInteger(0b000, v, data);
   }
 };
+template<> struct traits<std::uint8_t> : unsigned_integer<std::uint8_t>{};
+template<> struct traits<std::uint16_t> : unsigned_integer<std::uint16_t>{};
+template<> struct traits<std::uint32_t> : unsigned_integer<std::uint32_t>{};
+template<> struct traits<std::uint64_t> : unsigned_integer<std::uint64_t>{};
 
 /**
- * Specialization for uint64_t.
+ * Specialization for signed_integers.
  */
-template <>
-struct traits<std::uint64_t>
+template <typename IntegerType>
+struct signed_integer
 {
-  using Type = std::uint64_t;
-  template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
-  {
-    return serializeItem(0b000, v, data);
-  }
-  template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
-  {
-    return deserializeInteger(0b000, v, data);
-  }
-};
-
-/**
- * Specialization for int8_t.
- */
-template <>
-struct traits<std::int8_t>
-{
-  using Type = std::int8_t;
+  using Type = IntegerType;
 
   template <typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
     if (v < 0)
     {
-      return serializeItem(0b001, static_cast<std::uint8_t>(-v-1), data);
+      return serializeItem(0b001, static_cast<typename std::make_unsigned<IntegerType>::type>(-v-1), data);
     }
     else
     {
-      return serializeItem(0b000, static_cast<std::uint8_t>(v), data);
+      return serializeItem(0b000, static_cast<typename std::make_unsigned<IntegerType>::type>(v), data);
     }
   }
   template <typename Data>
@@ -483,85 +429,10 @@ struct traits<std::int8_t>
     return deserializeSignedInteger(v, data);
   }
 };
-
-/**
- * Specialization for uint16_t.
- */
-template <>
-struct traits<std::int16_t>
-{
-  using Type = std::int16_t;
-  template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
-  {
-    if (v < 0)
-    {
-      return serializeItem(0b001, static_cast<std::uint16_t>(-v-1), data);
-    }
-    else
-    {
-      return serializeItem(0b000, static_cast<std::uint16_t>(v), data);
-    }
-  }
-  template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
-  {
-    return deserializeSignedInteger(v, data);
-  }
-};
-
-/**
- * Specialization for uint32_t.
- */
-template <>
-struct traits<std::int32_t>
-{
-  using Type = std::int32_t;
-  template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
-  {
-    if (v < 0)
-    {
-      return serializeItem(0b001, static_cast<std::uint32_t>(-v - 1), data);
-    }
-    else
-    {
-      return serializeItem(0b000, static_cast<std::uint32_t>(v), data);
-    }
-  }
-
-  template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
-  {
-    return deserializeSignedInteger(v, data);
-  }
-};
-
-/**
- * Specialization for uint64_t.
- */
-template <>
-struct traits<std::int64_t>
-{
-  using Type = std::int64_t;
-  template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
-  {
-    if (v < 0)
-    {
-      return serializeItem(0b001, static_cast<std::uint64_t>(-v - 1), data);
-    }
-    else
-    {
-      return serializeItem(0b000, static_cast<std::uint64_t>(v), data);
-    }
-  }
-  template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
-  {
-    return deserializeSignedInteger(v, data);
-  }
-};
+template<> struct traits<std::int8_t> : signed_integer<std::int8_t>{};
+template<> struct traits<std::int16_t> : signed_integer<std::int16_t>{};
+template<> struct traits<std::int32_t> : signed_integer<std::int32_t>{};
+template<> struct traits<std::int64_t> : signed_integer<std::int64_t>{};
 
 
 /**
