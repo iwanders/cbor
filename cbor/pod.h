@@ -384,82 +384,48 @@ struct traits<std::nullptr_t>
 /**
  * Specialization for unsigned_integers.
  */
-template <typename IntegerType>
-struct unsigned_integer
+template <>
+struct traits<trait_families::unsigned_integer>
 {
-  using Type = IntegerType;
+  //  using Type = IntegerType;
 
-  template <typename Data>
+  template <typename Type, typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
     return serializeItem(0b000, v, data);
   }
 
-  template <typename Data>
+  template <typename Type, typename Data>
   static std::size_t deserializer(Type& v, Data& data)
   {
     return deserializeInteger(0b000, v, data);
   }
 };
-template <>
-struct traits<std::uint8_t> : unsigned_integer<std::uint8_t>
-{
-};
-template <>
-struct traits<std::uint16_t> : unsigned_integer<std::uint16_t>
-{
-};
-template <>
-struct traits<std::uint32_t> : unsigned_integer<std::uint32_t>
-{
-};
-template <>
-struct traits<std::uint64_t> : unsigned_integer<std::uint64_t>
-{
-};
-
 /**
  * Specialization for signed_integers.
  */
-template <typename IntegerType>
-struct signed_integer
+template <>
+struct traits<trait_families::signed_integer>
 {
-  using Type = IntegerType;
-
-  template <typename Data>
+  template <typename Type, typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
     if (v < 0)
     {
-      return serializeItem(0b001, static_cast<typename std::make_unsigned<IntegerType>::type>(-v - 1), data);
+      return serializeItem(0b001, static_cast<typename std::make_unsigned<Type>::type>(-v - 1), data);
     }
     else
     {
-      return serializeItem(0b000, static_cast<typename std::make_unsigned<IntegerType>::type>(v), data);
+      return serializeItem(0b000, static_cast<typename std::make_unsigned<Type>::type>(v), data);
     }
   }
-  template <typename Data>
+  template <typename Type, typename Data>
   static std::size_t deserializer(Type& v, Data& data)
   {
     return deserializeSignedInteger(v, data);
   }
 };
-template <>
-struct traits<std::int8_t> : signed_integer<std::int8_t>
-{
-};
-template <>
-struct traits<std::int16_t> : signed_integer<std::int16_t>
-{
-};
-template <>
-struct traits<std::int32_t> : signed_integer<std::int32_t>
-{
-};
-template <>
-struct traits<std::int64_t> : signed_integer<std::int64_t>
-{
-};
+
 
 /**
  * Specialization for float.

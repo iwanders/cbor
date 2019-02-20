@@ -37,36 +37,30 @@
 
 namespace cbor
 {
-template <typename T, typename... Data, typename detail::handled<T>::type = 0>
-std::size_t to_cbor(const T& v, detail::write_adapter<Data...>& data)
-{
-  return detail::traits<T>::serializer(v, data);
-}
-
-template <typename T, typename... Data, typename detail::not_handled<T>::type = 0>
-std::size_t to_cbor(const T& v, detail::write_adapter<Data...>& data)
-{
-  return to_cbor(v, data);
-}
-
-template <typename T, typename... Data, typename detail::handled<T>::type = 0>
-std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
-{
-  return detail::traits<T>::deserializer(v, data);
-}
-
-template <typename T, typename... Data, typename detail::not_handled<T>::type = 0>
-std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
-{
-  return from_cbor(v, data);
-}
 
 namespace detail
 {
+template <typename T, typename... Data>
+std::size_t to_cbor(const T& v, detail::write_adapter<Data...>& data)
+{
+  return detail::traits<typename detail::trait_dispatcher<T>::Type::Family>::serializer(v, data);
+}
+
+
+template <typename T, typename... Data>
+std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
+{
+  return detail::traits<typename detail::trait_dispatcher<T>::Type::Family>::deserializer(v, data);
+}
+
 // bump from the detail namespace up to the non detail namespace to allow ADL to apply on the data helper.
-using ::cbor::from_cbor;
-using ::cbor::to_cbor;
+//  using ::cbor::from_cbor;
+//  using ::cbor::to_cbor;
 }  // namespace detail
+
+//  template <typename T, typename... Data, typename detail::handled<typename detail::trait_dispatcher<T>::Type::Type>::type = 0>
+//  template <typename T, typename... Data, typename detail::handled<typename detail::trait_dispatcher<T>::Type::Type>::type = 0>
+
 
 /**
  * @brief Entry to the trait system, serializes v into data.
@@ -77,6 +71,7 @@ template <typename T, typename... Data>
 std::size_t serialize(const T& v, Data&&... data)
 {
   auto wrapper = detail::write_adapter<Data...>(std::forward<Data>(data)...);
+  using detail::to_cbor;
   return to_cbor(v, wrapper);
 }
 
@@ -86,6 +81,7 @@ std::size_t deserialize(T& v, Data&&... data)
   using const_adaptor = detail::const_read_adapter<Data...>;
   auto wrapper = const_adaptor::type::adapt(std::forward<Data>(data)...);
   //  auto wrapper = detail::read_adapter<Data...>::adapt(std::forward<Data>(data)...);
+  using detail::from_cbor;
   return from_cbor(v, wrapper);
 }
 }  // namespace cbor

@@ -51,13 +51,6 @@ struct traits
 };
 
 // some helpers....
-template <typename T>
-using has_trait_helper = std::is_same<typename traits<T>::Type, T>;
-template <typename T>
-using not_handled = typename std::enable_if<!has_trait_helper<T>::value, bool>;
-template <typename T>
-using handled = typename std::enable_if<has_trait_helper<T>::value, bool>;
-// To do sfinae; , typename not_handled<T>::type = 0
 
 template <typename Arg0, typename... Data>
 struct write_adapter
@@ -94,6 +87,73 @@ struct const_read_adapter
 {
   using type = read_adapter<typename always_add_const<Ts>::type...>;
 };
+
+
+
+// Something to dispatch types to their appropriate trait.
+
+struct trait_families
+{
+  using type = uint8_t;
+  using orphan = std::integral_constant<type, 0>;
+  using signed_integer = std::integral_constant<type, 1>;
+  using unsigned_integer = std::integral_constant<type, 2>;
+  using max = std::integral_constant<type, 3>;
+};
+
+// Base trait selector class.
+template <trait_families::type, typename T>
+struct trait_selector
+{
+  static const bool applies = true;
+  using Type = T;
+  using Family = T;
+};
+
+template <typename T>
+struct trait_selector<0, T>
+{
+  static const bool applies = true;
+  using Type = T;
+  using Family = T;
+};
+
+
+// Family selectors.
+template <typename T>
+struct trait_selector<trait_families::signed_integer::value, T>
+{
+  using Type = T;
+  using Family = trait_families::signed_integer;
+  static const bool applies = std::is_signed<T>::value && std::is_integral<T>::value && !std::is_same<T, bool>::value;
+  //  static const bool applies = false;
+};
+
+template <typename T>
+struct trait_selector<trait_families::unsigned_integer::value, T>
+{
+  using Type = T;
+  using Family = trait_families::unsigned_integer;
+  static const bool applies = std::is_unsigned<T>::value && std::is_integral<T>::value && !std::is_same<T, bool>::value;
+  //  static const bool applies = false;
+};
+
+
+// Recursively calling templated class to find the approprpiate family, or fall through.
+template <typename T, uint8_t index = trait_families::max::value-1>
+struct trait_dispatcher
+{
+  using Type = typename std::conditional<trait_selector<index, T>::applies, trait_selector<index, T>,
+                                              typename trait_dispatcher<T, index - 1>::Type>::type;
+};
+
+template <typename T>
+struct trait_dispatcher<T, 0>
+{
+  using Type = trait_selector<0, T>;
+};
+
+
 
 }  // namespace detail
 }  // namespace cbor

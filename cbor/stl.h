@@ -167,6 +167,7 @@ public:
     {
       std::uint64_t z;
       from_cbor(z, data);
+      //  cbor::deserialize(z, data);
       ind(indent);
       ss << "unsigned int: " << z << std::endl;
     }
@@ -174,6 +175,7 @@ public:
     {
       std::int64_t z;
       from_cbor(z, data);
+      //  cbor::deserialize(z, data);
       ind(indent);
       ss << "negative int: " << z << std::endl;
     }
