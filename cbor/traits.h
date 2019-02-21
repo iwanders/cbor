@@ -41,14 +41,7 @@ namespace detail
  * @brief Serializer trait struct
  */
 template <typename T, typename = void>
-struct traits
-{
-  template <typename Data>
-  static void serialize(const T& /* value */, Data& /* out */)
-  {
-    static_assert(std::is_same<T, void>::value, "This type is not supported by the cbor serialization.");
-  }
-};
+struct traits;
 
 // some helpers....
 

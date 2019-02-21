@@ -435,7 +435,7 @@ void test_into_object()
     cbor_object_ser::Buz z{ 2 };
     Data result = { 0x02 };
     //  Data cbor_representation;
-    //  cbor::serialize(z, cbor_representation);   //<--- todo: We lost this one :( 
+    cbor::serialize(z, cbor_representation);   //<--- todo: We lost this one :( 
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
 

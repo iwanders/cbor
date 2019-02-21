@@ -40,7 +40,7 @@ namespace cbor
 
 namespace detail
 {
-template <typename T, typename... Data>
+template <typename T, typename... Data, std::enable_if_t<std::is_constructible<typename detail::trait_dispatcher<T>::Type::Trait>::value, int> = 0>
 std::size_t to_cbor(const T& v, detail::write_adapter<Data...>& data)
 {
   return detail::trait_dispatcher<T>::Type::Trait::serializer(v, data);
