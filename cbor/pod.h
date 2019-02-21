@@ -384,10 +384,9 @@ struct traits<std::nullptr_t>
 /**
  * Specialization for unsigned_integers.
  */
-template <>
-struct traits<trait_families::unsigned_integer>
+template <typename IntegerType>
+struct traits<trait_families::unsigned_integer, IntegerType>
 {
-  //  using Type = IntegerType;
 
   template <typename Type, typename Data>
   static std::size_t serializer(const Type& v, Data& data)
@@ -404,10 +403,10 @@ struct traits<trait_families::unsigned_integer>
 /**
  * Specialization for signed_integers.
  */
-template <>
-struct traits<trait_families::signed_integer>
+template <typename Type>
+struct traits<trait_families::signed_integer, Type>
 {
-  template <typename Type, typename Data>
+  template <typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
     if (v < 0)
@@ -419,7 +418,7 @@ struct traits<trait_families::signed_integer>
       return serializeItem(0b000, static_cast<typename std::make_unsigned<Type>::type>(v), data);
     }
   }
-  template <typename Type, typename Data>
+  template <typename Data>
   static std::size_t deserializer(Type& v, Data& data)
   {
     return deserializeSignedInteger(v, data);
@@ -427,60 +426,43 @@ struct traits<trait_families::signed_integer>
 };
 
 
-/**
- * Specialization for float.
- */
-template <>
-struct traits<float>
+template <typename T>
+struct trait_floating_point_helper
 {
-  using Type = float;
-  template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
-  {
-    serializePrimitive((0b111 << 5) | 26, data);
-    const std::size_t offset = data.size();
-    data.resize(offset + sizeof(Type));
-    auto fixed = fixEndianness(*reinterpret_cast<const std::uint32_t*>(&v));
-    *reinterpret_cast<std::uint32_t*>(&(data[offset])) = fixed;
-    return 5;
-  }
-
-  template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
-  {
-    std::uint8_t type;
-    std::size_t size = deserializePrimitive(type, data);
-    if (type == ((0b111 << 5) | 26))
-    {
-      auto fixed = fixEndianness(*reinterpret_cast<const std::uint32_t*>(&data[data.position()]));
-      v = *reinterpret_cast<const float*>(&fixed);
-      data.advance(4);
-      return 4 + size;
-    }
-    else
-    {
-      // type error.
-    }
-    return 0;
-  }
 };
 
-/**
- * Specialization for double.
- */
 template <>
-struct traits<double>
+struct trait_floating_point_helper<float>
 {
-  using Type = double;
+  using type = float;
+  static const std::uint8_t minor_type = 26;
+  using int_type = std::uint32_t;
+};
+
+template <>
+struct trait_floating_point_helper<double>
+{
+  using type = double;
+  static const std::uint8_t minor_type = 27;
+  using int_type = std::uint64_t;
+};
+// long double exists, but is not in the cbor spec.
+
+template <typename FloatingPointType>
+struct traits<trait_families::floating_point, FloatingPointType>
+{
+  using Type = FloatingPointType;
+  using Helper = trait_floating_point_helper<Type>;
+
   template <typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
-    serializePrimitive((0b111 << 5) | 27, data);
+    serializePrimitive((0b111 << 5) | Helper::minor_type, data);
     const std::size_t offset = data.size();
     data.resize(offset + sizeof(Type));
-    auto fixed = fixEndianness(*reinterpret_cast<const std::uint64_t*>(&v));
-    *reinterpret_cast<std::uint64_t*>(&(data[offset])) = fixed;
-    return 9;
+    auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
+    *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
+    return sizeof(Type);
   }
 
   template <typename Data>
@@ -488,12 +470,13 @@ struct traits<double>
   {
     std::uint8_t type;
     std::size_t size = deserializePrimitive(type, data);
-    if (type == ((0b111 << 5) | 27))
+    if (type == ((0b111 << 5) | Helper::minor_type))
     {
-      auto fixed = fixEndianness(*reinterpret_cast<const std::uint64_t*>(&data[data.position()]));
-      v = *reinterpret_cast<const double*>(&fixed);
-      data.advance(8);
-      return 8 + size;
+      const std::size_t offset = data.position();
+      data.advance(sizeof(Type));  // advance before using the memory. This prevents reading out of bounds.
+      auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
+      v = *reinterpret_cast<const Type*>(&fixed);
+      return sizeof(Type) + size;
     }
     else
     {

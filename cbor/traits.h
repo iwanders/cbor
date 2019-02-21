@@ -98,16 +98,14 @@ struct trait_families
   using orphan = std::integral_constant<type, 0>;
   using signed_integer = std::integral_constant<type, 1>;
   using unsigned_integer = std::integral_constant<type, 2>;
-  using max = std::integral_constant<type, 3>;
+  using floating_point = std::integral_constant<type, 3>;
+  using max = std::integral_constant<type, 4>;
 };
 
 // Base trait selector class.
 template <trait_families::type, typename T>
 struct trait_selector
 {
-  static const bool applies = true;
-  using Type = T;
-  using Family = T;
 };
 
 template <typename T>
@@ -116,6 +114,7 @@ struct trait_selector<0, T>
   static const bool applies = true;
   using Type = T;
   using Family = T;
+  using Trait = detail::traits<Type>;
 };
 
 
@@ -125,8 +124,8 @@ struct trait_selector<trait_families::signed_integer::value, T>
 {
   using Type = T;
   using Family = trait_families::signed_integer;
+  using Trait = detail::traits<trait_families::signed_integer, T>;
   static const bool applies = std::is_signed<T>::value && std::is_integral<T>::value && !std::is_same<T, bool>::value;
-  //  static const bool applies = false;
 };
 
 template <typename T>
@@ -134,8 +133,17 @@ struct trait_selector<trait_families::unsigned_integer::value, T>
 {
   using Type = T;
   using Family = trait_families::unsigned_integer;
+  using Trait = detail::traits<trait_families::unsigned_integer, T>;
   static const bool applies = std::is_unsigned<T>::value && std::is_integral<T>::value && !std::is_same<T, bool>::value;
-  //  static const bool applies = false;
+};
+
+template <typename T>
+struct trait_selector<trait_families::floating_point::value, T>
+{
+  using Type = T;
+  using Family = trait_families::floating_point;
+  using Trait = detail::traits<trait_families::floating_point, T>;
+  static const bool applies = std::is_floating_point<T>::value;
 };
 
 

@@ -34,7 +34,7 @@ namespace cbor
 /**
  * @brief Swap endianness
  */
-std::uint16_t fixEndianness(const std::uint16_t in)
+inline std::uint16_t fixEndianness(const std::uint16_t in)
 {
   auto b = reinterpret_cast<const std::uint8_t*>(&in);
   return static_cast<std::uint16_t>((b[0] << 8) | b[1]);
@@ -43,7 +43,7 @@ std::uint16_t fixEndianness(const std::uint16_t in)
 /**
  * @brief Swap endianness, reduces to bswap assembly instruction.
  */
-std::uint32_t fixEndianness(const std::uint32_t in)
+inline std::uint32_t fixEndianness(const std::uint32_t in)
 {
   auto b = reinterpret_cast<const std::uint8_t*>(&in);
   return static_cast<std::uint32_t>((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]);
@@ -52,7 +52,7 @@ std::uint32_t fixEndianness(const std::uint32_t in)
 /**
  * @brief Swap endianness, reduces to bswap assembly instruction.
  */
-std::uint64_t fixEndianness(const std::uint64_t in)
+inline std::uint64_t fixEndianness(const std::uint64_t in)
 {
   auto b = reinterpret_cast<const std::uint8_t*>(&in);
   std::uint32_t upper = static_cast<std::uint32_t>(b[0] << 24) | static_cast<std::uint32_t>(b[1] << 16) |

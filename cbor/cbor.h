@@ -43,23 +43,16 @@ namespace detail
 template <typename T, typename... Data>
 std::size_t to_cbor(const T& v, detail::write_adapter<Data...>& data)
 {
-  return detail::traits<typename detail::trait_dispatcher<T>::Type::Family>::serializer(v, data);
+  return detail::trait_dispatcher<T>::Type::Trait::serializer(v, data);
 }
 
 
 template <typename T, typename... Data>
 std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
 {
-  return detail::traits<typename detail::trait_dispatcher<T>::Type::Family>::deserializer(v, data);
+  return detail::trait_dispatcher<T>::Type::Trait::deserializer(v, data);
 }
-
-// bump from the detail namespace up to the non detail namespace to allow ADL to apply on the data helper.
-//  using ::cbor::from_cbor;
-//  using ::cbor::to_cbor;
 }  // namespace detail
-
-//  template <typename T, typename... Data, typename detail::handled<typename detail::trait_dispatcher<T>::Type::Type>::type = 0>
-//  template <typename T, typename... Data, typename detail::handled<typename detail::trait_dispatcher<T>::Type::Type>::type = 0>
 
 
 /**
