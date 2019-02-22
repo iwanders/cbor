@@ -43,23 +43,24 @@ namespace detail
 template <typename T, typename = void>
 struct traits;
 
-// some helpers....
-
+/**
+ * @brief Structs for the read and write adapters.
+ */
 template <typename... Data>
 struct write_adapter : std::false_type {};
 template <typename... Data>
 struct read_adapter : std::false_type {};
 
-
-
-// Make all template arguments const!
+// Retrieval helpers.
 template <typename T>
-using const_read_adapter = read_adapter<typename std::decay<T>::type>;
+using get_read_adapter = read_adapter<typename std::decay<T>::type>;
+
+template <typename T>
+using get_write_adapter = write_adapter<typename std::decay<T>::type>;
 
 
 
 // Something to dispatch types to their appropriate trait.
-
 struct trait_families
 {
   using type = uint8_t;

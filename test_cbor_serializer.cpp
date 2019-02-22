@@ -209,18 +209,36 @@ void test_stl()
 
 void test_array()
 {
-  unsigned int input{ 2 };
-  Data result = { 0x02 };
-  std::array<cbor::DataType, 100> z;
-  std::size_t len = cbor::to_cbor(input, z.data(), z.size());
-  test(cbor::hexdump(result), cbor::hexdump(z, len));
+  {
+    unsigned int input{ 2 };
+    Data result = { 0x02 };
+    std::array<cbor::DataType, 100> z;
+    std::size_t len = cbor::to_cbor(input, z.data(), z.size());
+    test(cbor::hexdump(result), cbor::hexdump(z, len));
 
-  unsigned int read_back;
+    unsigned int read_back;
 
-  const cbor::DataType* offset = z.data();
-  std::uint8_t size = z.size();
-  cbor::from_cbor(read_back, offset, size);
-  cbor::from_cbor(read_back, z.data(), z.size());
+    const cbor::DataType* offset = z.data();
+    std::uint8_t size = z.size();
+    cbor::from_cbor(read_back, offset, size);
+    cbor::from_cbor(read_back, z.data(), z.size());
+  }
+  {
+    unsigned int input{ 2 };
+    Data result = { 0x02 };
+    cbor::DataType z[300];
+    std::size_t len = cbor::to_cbor(input, z);
+    test(cbor::hexdump(result), cbor::hexdump(z, len));
+
+    unsigned int read_back;
+
+    const cbor::DataType* offset = z;
+    std::uint16_t size = 300;
+    cbor::from_cbor(read_back, z);
+    test(read_back, input);
+    cbor::from_cbor(read_back, offset, size);
+    test(read_back, input);
+  }
 }
 
 namespace foo

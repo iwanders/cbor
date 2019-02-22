@@ -46,10 +46,14 @@ using Data = std::vector<DataType>;
 namespace detail
 {
 template <>
-struct write_adapter<Data&> : std::true_type
+struct write_adapter<Data> : std::true_type
 {
   Data& data;
-  write_adapter<Data&>(Data& d) : data{ d } {};
+  static write_adapter<Data> adapt(Data& d)
+  {
+    return write_adapter<Data>{ d };
+  }
+  write_adapter<Data>(Data& d) : data{ d } {};
 
   void resize(std::size_t value)
   {
@@ -114,15 +118,20 @@ std::string hexdump(const Data& d)
   return ss.str();
 }
 
-template <std::size_t Length>
-std::string hexdump(const std::array<DataType, Length>& d, std::size_t max_length = Length)
+std::string hexdump(const DataType* d, std::size_t length)
 {
   std::stringstream ss;
-  for (std::size_t i = 0; i < std::min(Length, max_length); i++)
+  for (std::size_t i = 0; i < length; i++)
   {
     ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ d[i] } << " ";
   }
   return ss.str();
+}
+
+template <size_t Length>
+std::string hexdump(const std::array<DataType, Length>& d, std::size_t max_length)
+{
+  return hexdump(d.data(), std::min(max_length, d.size()));
 }
 
 /**
@@ -240,22 +249,21 @@ public:
 };
 std::string hexdump(const cbor_object& d)
 {
-  std::stringstream ss;
-  for (const auto& v : d.serialized_)
-  {
-    ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ v } << " ";
-  }
-  return ss.str();
+  return hexdump(d.serialized_.data(), d.serialized_.size());
 }
 
 namespace detail
 {
 template <>
-struct write_adapter<cbor_object&> : std::true_type
+struct write_adapter<cbor_object> : std::true_type
 {
   
   cbor_object& o;
-  write_adapter<cbor_object&>(cbor_object& d) : o{ d } {};
+  static write_adapter<cbor_object> adapt(cbor_object& d)
+  {
+    return write_adapter<cbor_object>{ d };
+  }
+  write_adapter<cbor_object>(cbor_object& d) : o{ d } {};
 
   void resize(std::uint32_t value)
   {

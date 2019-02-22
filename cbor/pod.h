@@ -41,12 +41,27 @@ namespace cbor
 namespace detail
 {
 template <>
-struct write_adapter<DataType*, std::size_t> : std::true_type
+struct write_adapter<DataType*> : std::true_type
 {
   DataType* data;
   std::size_t max_length;
   std::size_t used_size{ 0 };
-  write_adapter<DataType*, std::size_t>(DataType* d, std::size_t size) : data{ d }, max_length{ size } {};
+
+  template <typename T>
+  static write_adapter<DataType*> adapt(DataType* d, const T size)
+  {
+    return write_adapter<DataType*>{d, size};
+  }
+
+  template <size_t N>
+  static write_adapter<DataType*> adapt(DataType (&d)[N])
+  {
+    return write_adapter<DataType*>{d, N};
+  }
+
+  template <typename T>
+  write_adapter<DataType*>(DataType* d, const T size) : data{ d }, max_length{ size } {};
+
   void resize(std::uint32_t value)
   {
     used_size = value;
@@ -71,6 +86,12 @@ struct read_adapter<DataType*> : std::true_type
   static read_adapter<DataType*> adapt(const DataType* d, const T s)
   {
     return read_adapter<DataType*>{ d, s };
+  }
+
+  template <size_t N>
+  static read_adapter<DataType*> adapt(DataType (&d)[N])
+  {
+    return read_adapter<DataType*>{ d, N };
   }
 
   template <typename T>

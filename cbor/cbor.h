@@ -60,18 +60,19 @@ std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
  * @param v The data to serialize.
  * @param data The data vector to serialize into.
  */
-template <typename T, typename... Data, std::enable_if_t<detail::write_adapter<Data...>::value, int> = 0>
-std::size_t to_cbor(const T& v, Data&&... data)
+template <typename T, typename Arg0, typename... ArgN, std::enable_if_t<detail::get_write_adapter<Arg0>::value, int> = 0>
+std::size_t to_cbor(const T& v, Arg0&& arg0, ArgN&&... argn)
 {
-  auto wrapper = detail::write_adapter<Data...>(std::forward<Data>(data)...);
+  using write_adapter = detail::get_write_adapter<Arg0>;
+  auto wrapper = write_adapter::adapt(std::forward<Arg0>(arg0), std::forward<ArgN>(argn)...);
   return to_cbor(v, wrapper);
 }
 
-template <typename T, typename Arg0, typename... ArgN, std::enable_if_t<detail::const_read_adapter<Arg0>::value, int> = 0>
+template <typename T, typename Arg0, typename... ArgN, std::enable_if_t<detail::get_read_adapter<Arg0>::value, int> = 0>
 std::size_t from_cbor(T& v, Arg0&& arg0, ArgN&&... argn)
 {
-  using const_adaptor = detail::const_read_adapter<Arg0>;
-  auto wrapper = const_adaptor::adapt(std::forward<Arg0>(arg0), std::forward<ArgN>(argn)...);
+  using read_adapter = detail::get_read_adapter<Arg0>;
+  auto wrapper = read_adapter::adapt(std::forward<Arg0>(arg0), std::forward<ArgN>(argn)...);
   return from_cbor(v, wrapper);
 }
 }  // namespace cbor
