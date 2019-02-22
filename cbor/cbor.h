@@ -40,14 +40,14 @@ namespace cbor
 
 namespace detail
 {
-template <typename T, typename... Data, std::enable_if_t<std::is_constructible<typename detail::trait_dispatcher<T>::Type::Trait>::value, int> = 0>
+template <typename T, typename... Data, std::enable_if_t<has_trait<T>::value, int> = 0>
 std::size_t to_cbor(const T& v, detail::write_adapter<Data...>& data)
 {
   return detail::trait_dispatcher<T>::Type::Trait::serializer(v, data);
 }
 
 
-template <typename T, typename... Data>
+template <typename T, typename... Data, std::enable_if_t<has_trait<T>::value, int> = 0>
 std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
 {
   return detail::trait_dispatcher<T>::Type::Trait::deserializer(v, data);
@@ -60,8 +60,8 @@ std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
  * @param v The data to serialize.
  * @param data The data vector to serialize into.
  */
-template <typename T, typename... Data>
-std::size_t serialize(const T& v, Data&&... data)
+template <typename T, typename... Data, std::enable_if_t<detail::write_adapter<Data...>::value, int> = 0>
+std::size_t to_cbor(const T& v, Data&&... data)
 {
   auto wrapper = detail::write_adapter<Data...>(std::forward<Data>(data)...);
   using detail::to_cbor;
@@ -72,7 +72,7 @@ template <typename T, typename... Data>
 std::size_t deserialize(T& v, Data&&... data)
 {
   using const_adaptor = detail::const_read_adapter<Data...>;
-  auto wrapper = const_adaptor::type::adapt(std::forward<Data>(data)...);
+  auto wrapper = const_adaptor::adapt(std::forward<Data>(data)...);
   //  auto wrapper = detail::read_adapter<Data...>::adapt(std::forward<Data>(data)...);
   using detail::from_cbor;
   return from_cbor(v, wrapper);

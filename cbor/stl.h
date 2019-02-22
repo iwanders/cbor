@@ -46,7 +46,7 @@ using Data = std::vector<DataType>;
 namespace detail
 {
 template <>
-struct write_adapter<Data&>
+struct write_adapter<Data&> : std::true_type
 {
   Data& data;
   write_adapter<Data&>(Data& d) : data{ d } {};
@@ -251,8 +251,9 @@ std::string hexdump(const cbor_object& d)
 namespace detail
 {
 template <>
-struct write_adapter<cbor_object&>
+struct write_adapter<cbor_object&> : std::true_type
 {
+  
   cbor_object& o;
   write_adapter<cbor_object&>(cbor_object& d) : o{ d } {};
 

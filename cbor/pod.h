@@ -41,7 +41,7 @@ namespace cbor
 namespace detail
 {
 template <>
-struct write_adapter<DataType*, std::size_t>
+struct write_adapter<DataType*, std::size_t> : std::true_type
 {
   DataType* data;
   std::size_t max_length;

@@ -93,7 +93,7 @@ void test_associatives()
     std::map<unsigned int, unsigned int> input{ { 1, 2 }, { 3, 4 } };
     Data result = { 0xa2, 0x01, 0x02, 0x03, 0x04 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
   // test string map
@@ -102,7 +102,7 @@ void test_associatives()
     Data result = { 0xa5, 0x61, 0x61, 0x61, 0x41, 0x61, 0x62, 0x61, 0x42, 0x61, 0x63,
                     0x61, 0x43, 0x61, 0x64, 0x61, 0x44, 0x61, 0x65, 0x61, 0x45 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     std::map<std::string, std::string> output;
@@ -112,7 +112,7 @@ void test_associatives()
     test(std::equal(input.begin(), input.end(), output.begin()), true);
 
     cbor::cbor_object as_obj;
-    cbor::serialize(input, as_obj);
+    cbor::to_cbor(input, as_obj);
 
     std::cout << "map of strings:" << std::endl;
     std::cout << as_obj.prettyPrint() << std::endl;
@@ -129,7 +129,7 @@ void test_stl()
     std::tuple<unsigned int, unsigned int> input{ 1, 2 };
     Data result = { 0x82, 0x01, 0x02 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     std::tuple<unsigned int, unsigned int> output;
@@ -143,7 +143,7 @@ void test_stl()
     std::vector<unsigned int> input{ 1, 2 };
     Data result = { 0x82, 0x01, 0x02 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     std::vector<unsigned int> output;
@@ -159,7 +159,7 @@ void test_stl()
     std::string input{ "foo" };
     Data result = { 0x63, 0x66, 0x6F, 0x6F };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     std::string output;
@@ -173,7 +173,7 @@ void test_stl()
     std::pair<unsigned int, unsigned int> input{ 1, 2 };
     Data result = { 0x82, 0x01, 0x02 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     std::pair<unsigned int, unsigned int> output;
@@ -189,10 +189,10 @@ void test_stl()
     PointList input{ { 3, 7 }, { 90, 800 } };
     Data result = { 0x82, 0x82, 0x03, 0x07, 0x82, 0x18, 0x5A, 0x19, 0x03, 0x20 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
 
     cbor::cbor_object single_obj;
-    cbor::serialize(input, single_obj);
+    cbor::to_cbor(input, single_obj);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     PointList read_back;
@@ -212,7 +212,7 @@ void test_array()
   unsigned int input{ 2 };
   Data result = { 0x02 };
   std::array<cbor::DataType, 100> z;
-  std::size_t len = cbor::serialize(input, z.data(), z.size());
+  std::size_t len = cbor::to_cbor(input, z.data(), z.size());
   test(cbor::hexdump(result), cbor::hexdump(z, len));
 
   unsigned int read_back;
@@ -235,7 +235,7 @@ std::size_t to_cbor(const Bar& b, cbor::detail::write_adapter<Data...> data)
 {
   std::cout << "to cbor adl" << std::endl;
   to_cbor(b.f, data);
-  //  cbor::serialize(b.f, data);
+  //  cbor::to_cbor(b.f, data);
   return 0;
 }
 
@@ -255,14 +255,14 @@ void test_adl()
     foo::Bar input{ 2 };
     Data result = { 0x02 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
   {
     std::vector<foo::Bar> input = { foo::Bar{ 2 }, foo::Bar{ 3 }, foo::Bar{ 4 } };
     Data result = { 0x83, 0x02, 0x03, 0x04 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     std::vector<foo::Bar> output;
@@ -277,7 +277,7 @@ void test_pod()
     const std::uint8_t input{ 50 };
     Data result = { 0x18, 0x32 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     std::uint8_t output = 0;
@@ -289,7 +289,7 @@ void test_pod()
     const std::int8_t input{ -50 };
     Data result = { 0x38, 0x31 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     std::int8_t output = 0;
@@ -301,7 +301,7 @@ void test_pod()
     const std::uint16_t input{ 50 };
     Data result = { 0x18, 0x32 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     std::uint16_t output = 0;
@@ -313,7 +313,7 @@ void test_pod()
     unsigned int input{ 2 };
     Data result = { 0x02 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     unsigned int output = 0;
@@ -325,7 +325,7 @@ void test_pod()
     double input{ 13377.1414 };
     Data result = { 0xFB, 0x40, 0xCA, 0x20, 0x92, 0x19, 0x65, 0x2B, 0xD4 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     double output = 0.0;
@@ -337,7 +337,7 @@ void test_pod()
     float input{ 6.3125 };
     Data result = { 0xFA, 0x40, 0xCA, 0x00, 0x00 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     float output = 0.0;
@@ -348,14 +348,14 @@ void test_pod()
   {
     Data result = { 0xF6 };
     Data cbor_representation;
-    cbor::serialize(nullptr, cbor_representation);
+    cbor::to_cbor(nullptr, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
   {
     int input{ 2 };
     Data result = { 0x02 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     int output = 0;
@@ -366,7 +366,7 @@ void test_pod()
     int input2{ -2 };
     Data result2 = { 0x21 };
     cbor_representation.resize(0);
-    cbor::serialize(input2, cbor_representation);
+    cbor::to_cbor(input2, cbor_representation);
     test(cbor::hexdump(result2), cbor::hexdump(cbor_representation));
 
     int output2 = 0;
@@ -378,7 +378,7 @@ void test_pod()
     bool bool_val = true;
     Data result = { 0xF5 };
     Data cbor_representation;
-    cbor::serialize(bool_val, cbor_representation);
+    cbor::to_cbor(bool_val, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     bool output = false;
@@ -389,7 +389,7 @@ void test_pod()
     bool_val = false;
     Data result2 = { 0xF4 };
     cbor_representation.resize(0);
-    cbor::serialize(bool_val, cbor_representation);
+    cbor::to_cbor(bool_val, cbor_representation);
     test(cbor::hexdump(result2), cbor::hexdump(cbor_representation));
 
     output = true;
@@ -411,7 +411,7 @@ std::size_t to_cbor(const Buz& b, cbor::cbor_object& data)
 {
   std::cout << "to cbor_object_ser adl " << std::endl;
   //  to_cbor(b.f, data);
-  cbor::serialize(b.f, data);
+  cbor::to_cbor(b.f, data);
   return 0;
 }
 
@@ -426,7 +426,7 @@ void test_into_object()
     unsigned int input{ 2 };
     Data result = { 0x02 };
     //  Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
 
@@ -435,7 +435,7 @@ void test_into_object()
     cbor_object_ser::Buz z{ 2 };
     Data result = { 0x02 };
     //  Data cbor_representation;
-    cbor::serialize(z, cbor_representation);   //<--- todo: We lost this one :( 
+    cbor::to_cbor(z, cbor_representation);   //<--- todo: We lost this one :( 
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
 
@@ -443,7 +443,7 @@ void test_into_object()
     unsigned int input{ 2 };
     Data result = { 0x02 };
     Data cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     cbor::cbor_object cbor_reconstruct;
@@ -456,7 +456,7 @@ void test_into_object()
     std::vector<unsigned int> input{ 1, 2 };
     Data result = { 0x82, 0x01, 0x02 };
     cbor::cbor_object cbor_representation;
-    cbor::serialize(input, cbor_representation);
+    cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
 
     cbor::cbor_object cbor_res;
@@ -475,14 +475,14 @@ void test_into_object()
     std::map<int, cbor::cbor_object> y;
     cbor::cbor_object my_three;
     std::string foo = "foo";
-    cbor::serialize(foo, my_three);
+    cbor::to_cbor(foo, my_three);
     y[-3] = my_three;
-    cbor::serialize(x, z[0]);
-    cbor::serialize(f, z[1]);
-    cbor::serialize(y, z[2]);
+    cbor::to_cbor(x, z[0]);
+    cbor::to_cbor(f, z[1]);
+    cbor::to_cbor(y, z[2]);
     Data repr;
 
-    cbor::serialize(z, repr);
+    cbor::to_cbor(z, repr);
     cbor::cbor_object cbor_res;
     Data cbor_data = repr;
     cbor::deserialize(cbor_res, cbor_data);

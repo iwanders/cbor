@@ -38,29 +38,17 @@ using DataType = std::uint8_t;
 namespace detail
 {
 /**
- * @brief Serializer trait struct
+ * @brief Main trait struct for types.
  */
 template <typename T, typename = void>
 struct traits;
 
 // some helpers....
 
-template <typename Arg0, typename... Data>
-struct write_adapter
-{
-  write_adapter<Arg0, Data...>(...)
-  {
-    static_assert(std::is_same<Arg0, void>::value, "Write adapter not found for this type.");
-  }
-};
-template <typename Arg0, typename... Data>
-struct read_adapter
-{
-  static read_adapter<Arg0, Data...> adapt(...)
-  {
-    static_assert(std::is_same<Arg0, bool>::value, "Read adapter not found for this type.");
-  }
-};
+template <typename... Data>
+struct write_adapter : std::false_type {};
+template <typename... Data>
+struct read_adapter;
 
 template <typename T>
 struct always_add_const
@@ -76,10 +64,7 @@ struct always_add_const<T&>
 
 // Make all template arguments const!
 template <typename... Ts>
-struct const_read_adapter
-{
-  using type = read_adapter<typename always_add_const<Ts>::type...>;
-};
+using const_read_adapter = read_adapter<typename always_add_const<Ts>::type...>;
 
 
 
@@ -154,6 +139,10 @@ struct trait_dispatcher<T, 0>
   using Type = trait_selector<0, T>;
 };
 
+//
+// Some helpers to check whether a type is supported by our traits.
+template <typename T>
+using has_trait = std::is_default_constructible<typename detail::trait_dispatcher<T>::Type::Trait>;
 
 
 }  // namespace detail
