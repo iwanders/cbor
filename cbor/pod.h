@@ -62,7 +62,7 @@ struct write_adapter<DataType*, std::size_t> : std::true_type
 };
 
 template <>
-struct read_adapter<const DataType*, const std::size_t>
+struct read_adapter<const DataType*, const std::size_t> : std::true_type
 {
   const DataType* data;
   std::size_t max_length;

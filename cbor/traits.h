@@ -48,7 +48,7 @@ struct traits;
 template <typename... Data>
 struct write_adapter : std::false_type {};
 template <typename... Data>
-struct read_adapter;
+struct read_adapter : std::false_type {};
 
 template <typename T>
 struct always_add_const

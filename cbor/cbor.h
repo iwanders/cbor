@@ -64,17 +64,14 @@ template <typename T, typename... Data, std::enable_if_t<detail::write_adapter<D
 std::size_t to_cbor(const T& v, Data&&... data)
 {
   auto wrapper = detail::write_adapter<Data...>(std::forward<Data>(data)...);
-  using detail::to_cbor;
   return to_cbor(v, wrapper);
 }
 
-template <typename T, typename... Data>
-std::size_t deserialize(T& v, Data&&... data)
+template <typename T, typename... Data, std::enable_if_t<detail::const_read_adapter<Data...>::value, int> = 0>
+std::size_t from_cbor(T& v, Data&&... data)
 {
   using const_adaptor = detail::const_read_adapter<Data...>;
   auto wrapper = const_adaptor::adapt(std::forward<Data>(data)...);
-  //  auto wrapper = detail::read_adapter<Data...>::adapt(std::forward<Data>(data)...);
-  using detail::from_cbor;
   return from_cbor(v, wrapper);
 }
 }  // namespace cbor

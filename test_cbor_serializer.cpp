@@ -107,7 +107,7 @@ void test_associatives()
 
     std::map<std::string, std::string> output;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(input.size(), output.size());
     test(std::equal(input.begin(), input.end(), output.begin()), true);
 
@@ -118,7 +118,7 @@ void test_associatives()
     std::cout << as_obj.prettyPrint() << std::endl;
     cbor::cbor_object reinterpret_object;
     const Data cbor_data_from_obj = as_obj.serialized_;
-    cbor::deserialize(reinterpret_object, cbor_data_from_obj);
+    cbor::from_cbor(reinterpret_object, cbor_data_from_obj);
     test(cbor::hexdump(reinterpret_object.serialized_), cbor::hexdump(cbor_data_from_obj));
   }
 }
@@ -134,7 +134,7 @@ void test_stl()
 
     std::tuple<unsigned int, unsigned int> output;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(std::get<0>(output), std::get<0>(input));
     test(std::get<1>(output), std::get<1>(input));
   }
@@ -148,7 +148,7 @@ void test_stl()
 
     std::vector<unsigned int> output;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(output.size(), input.size());
     test(output[0], input[0]);
     test(output[1], input[1]);
@@ -164,7 +164,7 @@ void test_stl()
 
     std::string output;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(input, output);
   }
 
@@ -178,7 +178,7 @@ void test_stl()
 
     std::pair<unsigned int, unsigned int> output;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(output.first, input.first);
     test(output.second, input.second);
   }
@@ -197,10 +197,10 @@ void test_stl()
 
     PointList read_back;
     const Data z = cbor_representation;
-    cbor::deserialize(read_back, z);
+    cbor::from_cbor(read_back, z);
 
     std::vector<cbor::cbor_object> as_objects;
-    cbor::deserialize(as_objects, z);
+    cbor::from_cbor(as_objects, z);
 
     std::cout << "List of pairs" << std::endl;
     std::cout << single_obj.prettyPrint() << std::endl;
@@ -219,8 +219,8 @@ void test_array()
 
   const cbor::DataType* offset = z.data();
   std::size_t size = z.size();
-  cbor::deserialize(read_back, offset, size);
-  cbor::deserialize(read_back, z.data(), z.size());
+  cbor::from_cbor(read_back, offset, size);
+  cbor::from_cbor(read_back, z.data(), z.size());
 }
 
 namespace foo
@@ -244,7 +244,7 @@ std::size_t from_cbor(Bar& b, cbor::detail::read_adapter<Data...> data)
 {
   std::cout << "from_cbor adl" << std::endl;
   from_cbor(b.f, data);
-  //  cbor::deserialize(b.f, data);
+  //  cbor::from_cbor(b.f, data);
   return 0;
 }
 
@@ -267,7 +267,7 @@ void test_adl()
 
     std::vector<foo::Bar> output;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
   }
 }
 
@@ -282,7 +282,7 @@ void test_pod()
 
     std::uint8_t output = 0;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(input, output);
   }
   {
@@ -294,7 +294,7 @@ void test_pod()
 
     std::int8_t output = 0;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(input, output);
   }
   {
@@ -306,7 +306,7 @@ void test_pod()
 
     std::uint16_t output = 0;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(input, output);
   }
   {
@@ -318,7 +318,7 @@ void test_pod()
 
     unsigned int output = 0;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(input, output);
   }
   {
@@ -330,7 +330,7 @@ void test_pod()
 
     double output = 0.0;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(input, output);
   }
   {
@@ -342,7 +342,7 @@ void test_pod()
 
     float output = 0.0;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(input, output);
   }
   {
@@ -360,7 +360,7 @@ void test_pod()
 
     int output = 0;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(input, output);
 
     int input2{ -2 };
@@ -371,7 +371,7 @@ void test_pod()
 
     int output2 = 0;
     const Data cbor_data2 = cbor_representation;
-    cbor::deserialize(output2, cbor_data2);
+    cbor::from_cbor(output2, cbor_data2);
     test(input2, output2);
   }
   {
@@ -383,7 +383,7 @@ void test_pod()
 
     bool output = false;
     const Data cbor_data = cbor_representation;
-    cbor::deserialize(output, cbor_data);
+    cbor::from_cbor(output, cbor_data);
     test(bool_val, output);
 
     bool_val = false;
@@ -394,7 +394,7 @@ void test_pod()
 
     output = true;
     const Data cbor_data2 = cbor_representation;
-    cbor::deserialize(output, cbor_data2);
+    cbor::from_cbor(output, cbor_data2);
     test(output, bool_val);
   }
 }
@@ -448,7 +448,7 @@ void test_into_object()
 
     cbor::cbor_object cbor_reconstruct;
     const Data cbor_repr = cbor_representation;
-    cbor::deserialize(cbor_reconstruct, cbor_repr);
+    cbor::from_cbor(cbor_reconstruct, cbor_repr);
     test(cbor::hexdump(cbor_reconstruct.serialized_), cbor::hexdump(cbor_representation));
   }
 
@@ -461,7 +461,7 @@ void test_into_object()
 
     cbor::cbor_object cbor_res;
     const Data cbor_data = cbor_representation.serialized_;
-    cbor::deserialize(cbor_res, cbor_data);
+    cbor::from_cbor(cbor_res, cbor_data);
     test(cbor::hexdump(cbor_res.serialized_), cbor::hexdump(cbor_data));
   }
 
@@ -485,7 +485,7 @@ void test_into_object()
     cbor::to_cbor(z, repr);
     cbor::cbor_object cbor_res;
     Data cbor_data = repr;
-    cbor::deserialize(cbor_res, cbor_data);
+    cbor::from_cbor(cbor_res, cbor_data);
     test(cbor::hexdump(cbor_res.serialized_), cbor::hexdump(cbor_data));
     std::cout << cbor_res.prettyPrint() << std::endl;
   }

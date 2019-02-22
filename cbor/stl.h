@@ -66,7 +66,7 @@ struct write_adapter<Data&> : std::true_type
 };
 
 template <>
-struct read_adapter<const Data&>
+struct read_adapter<const Data&> : std::true_type
 {
   const Data& data;
   std::size_t cursor = 0;
@@ -194,7 +194,7 @@ public:
 
       const cbor::DataType* offset = &(data[data.position()]);
       const std::size_t size = data.size() - data.position();
-      cbor::deserialize(z, offset, size);  // yep :)
+      cbor::from_cbor(z, offset, size);  // yep :)
 
       ind(indent);
       ss << "array #" << z.size() << std::endl;
@@ -211,7 +211,7 @@ public:
       //  from_cbor(z, data);
       const cbor::DataType* offset = &(data[data.position()]);
       const std::size_t size = data.size() - data.position();
-      cbor::deserialize(z, offset, size);  // yep :)
+      cbor::from_cbor(z, offset, size);  // yep :)
 
       ind(indent);
       ss << "map #" << z.size() << std::endl;
@@ -230,7 +230,7 @@ public:
       //  from_cbor(z, data);
       const cbor::DataType* offset = &(data[data.position()]);
       const std::size_t size = data.size() - data.position();
-      cbor::deserialize(z, offset, size);  // yep :)
+      cbor::from_cbor(z, offset, size);  // yep :)
 
       ind(indent);
       ss << "str #" << z.size() << ":" << z << std::endl;
