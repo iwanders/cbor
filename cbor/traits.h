@@ -50,21 +50,11 @@ struct write_adapter : std::false_type {};
 template <typename... Data>
 struct read_adapter : std::false_type {};
 
-template <typename T>
-struct always_add_const
-{
-  using type = const T;
-};
 
-template <typename T>
-struct always_add_const<T&>
-{
-  using type = const T&;
-};
 
 // Make all template arguments const!
-template <typename... Ts>
-using const_read_adapter = read_adapter<typename always_add_const<Ts>::type...>;
+template <typename T>
+using const_read_adapter = read_adapter<typename std::decay<T>::type>;
 
 
 

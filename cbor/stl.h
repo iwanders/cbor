@@ -66,15 +66,15 @@ struct write_adapter<Data&> : std::true_type
 };
 
 template <>
-struct read_adapter<const Data&> : std::true_type
+struct read_adapter<Data> : std::true_type
 {
   const Data& data;
   std::size_t cursor = 0;
-  static read_adapter<const Data&> adapt(const Data& d)
+  static read_adapter<Data> adapt(const Data& d)
   {
-    return read_adapter<const Data&>{ d };
+    return read_adapter<Data>{ d };
   }
-  read_adapter<const Data&>(const Data& d) : data{ d } {};
+  read_adapter<Data>(const Data& d) : data{ d } {};
   //  read_adapter<const Data&>(Data& d) : data{d} {};
   std::size_t position() const
   {
@@ -151,7 +151,7 @@ public:
   std::string prettyPrint(std::size_t indent = 0) const
   {
     // Create this bespoke read adapter without any copies.
-    detail::read_adapter<const Data&> data = detail::read_adapter<const Data&>{ serialized_ };
+    detail::read_adapter<Data> data = detail::read_adapter<Data>{ serialized_ };
     std::uint8_t first_byte = data[data.position()];
     std::uint8_t major_type = first_byte >> 5;
 

@@ -508,7 +508,7 @@ struct adapter<T , typename std::enable_if_t<std::is_same<T, int>::value, void>>
   const int x = 5;
 };
 
-void test()
+void test2()
 { //  type_dispatch z;
   //  std::cout << type_name<decltype(z.signed_integer)>() << std::endl;
   //  std::cout << type_name<decltype(z.signed_integer.value)>() << std::endl;
@@ -517,6 +517,38 @@ void test()
   adapter<bool> b;
   std::cout << b.x << std::endl;
 }
+
+
+// Make all template arguments const!
+template <typename T>
+using X = typename std::decay<T>::type;
+
+void test()
+{
+  {
+    using A = const unsigned char*; std::cout << "base:" << type_name<A>() << "      " << type_name<X< A >>() << std::endl;
+    using B = const unsigned char*&; std::cout << "base:" << type_name<B>() << "      " << type_name<X< B >>() << std::endl;
+    using C = unsigned char*; std::cout << "base:" << type_name<C>() << "      " << type_name<X< C >>() << std::endl;
+    using D = unsigned char*&; std::cout << "base:" << type_name<D>() << "      " << type_name<X< D >>() << std::endl;
+  }
+
+  std::cout << std::endl;
+  using E = Data; std::cout << "base:" << type_name<E>() << "     " << type_name<X< E >>() << std::endl;
+  using F = Data&; std::cout << "base:" << type_name<F>() << "      " << type_name<X< F >>() << std::endl;
+  using G = const Data&; std::cout << "base:" << type_name<G>() << "      " << type_name<X< G >>() << std::endl;
+  std::cout << std::endl;
+
+  {
+    using A = const unsigned char[3]; std::cout << "base:" << type_name<A>() << "      " << type_name<X< A >>() << std::endl;
+    using B = const unsigned char[3]; std::cout << "base:" << type_name<B>() << "      " << type_name<X< B >>() << std::endl;
+    using C = unsigned char[3]; std::cout << "base:" << type_name<C>() << "      " << type_name<X< C >>() << std::endl;
+    using D = unsigned char[3]; std::cout << "base:" << type_name<D>() << "      " << type_name<X< D >>() << std::endl;
+  }
+
+}
+
+
+
 }  // namespace trait_select_test
 
 int main(int /* argc */, char** /* argv */)
