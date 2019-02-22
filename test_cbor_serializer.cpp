@@ -218,7 +218,7 @@ void test_array()
   unsigned int read_back;
 
   const cbor::DataType* offset = z.data();
-  std::size_t size = z.size();
+  std::uint8_t size = z.size();
   cbor::from_cbor(read_back, offset, size);
   cbor::from_cbor(read_back, z.data(), z.size());
 }
@@ -410,8 +410,8 @@ struct Buz
 std::size_t to_cbor(const Buz& b, cbor::cbor_object& data)
 {
   std::cout << "to cbor_object_ser adl " << std::endl;
-  //  to_cbor(b.f, data);
-  cbor::to_cbor(b.f, data);
+  to_cbor(b.f, data);
+  //  cbor::to_cbor(b.f, data);
   return 0;
 }
 
@@ -426,7 +426,7 @@ void test_into_object()
     unsigned int input{ 2 };
     Data result = { 0x02 };
     //  Data cbor_representation;
-    cbor::to_cbor(input, cbor_representation);
+    to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
 
@@ -493,99 +493,29 @@ void test_into_object()
 
 namespace trait_select_test
 {
-struct type_dispatch
-{
-  using Type = uint8_t;
-  const static std::integral_constant<Type, 2> signed_integer;
-  const static std::integral_constant<Type, 3> unsigned_integer;
-  const static std::integral_constant<Type, 1> type_bool;
-  const static std::integral_constant<Type, 4> max;
-};
+template <typename T, typename T2= void>
+struct adapter;
 
-template <type_dispatch::Type, typename T>
-struct selector
+template <typename T>
+struct adapter<T , typename std::enable_if_t<std::is_same<T, bool>::value, void>>
 {
-  static const bool applies = std::true_type::value;
-  using Type = T;
-  static const int x = 0;
-};
-
-template <typename T>  // Why don't we terminate the search on this one?!
-struct selector<0, T>
-{
-  static const bool applies = true;
-  using Type = T;
-  static const int x = 999;
+  const int x = 3;
 };
 
 template <typename T>
-struct selector<type_dispatch::signed_integer.value, T>
+struct adapter<T , typename std::enable_if_t<std::is_same<T, int>::value, void>>
 {
-  using Type = T;
-  static const bool applies = std::is_signed<T>::value && std::is_integral<T>::value && !std::is_same<T, bool>::value;
-  static const int x = type_dispatch::signed_integer.value;
-};
-
-template <typename T>
-struct selector<type_dispatch::unsigned_integer.value, T>
-{
-  using Type = T;
-  static const bool applies = std::is_unsigned<T>::value && std::is_integral<T>::value && !std::is_same<T, bool>::value;
-  static const int x = type_dispatch::unsigned_integer.value;
-};
-
-template <typename T>
-struct selector<type_dispatch::type_bool.value, T>
-{
-  using Type = T;
-  static const bool applies = std::is_same<T, bool>::value;
-  static const int x = type_dispatch::type_bool.value;
-};
-
-template <typename T>
-struct selector<type_dispatch::max.value, T>
-{
-  using Type = T;
-  static const bool applies = false;
-  static const int x = type_dispatch::max.value;
-};
-
-template <typename T, uint8_t index = type_dispatch::max.value>
-struct zz
-{
-  using TraitType = typename std::conditional<selector<index, T>::applies, selector<index, T>,
-                                              typename zz<T, index - 1>::TraitType>::type;
-};
-
-template <typename T>
-struct zz<T, 0>
-{
-  using TraitType = selector<0, T>;
+  const int x = 5;
 };
 
 void test()
-{
-  //  std::cout << "x: " << onsignedness<int>::x << std::endl;
-  //  std::cout << "x: " << onsignedness<unsigned int>::x << std::endl;
-
-  //  std::integral_constant<int, 2> x;
-  //  std::cout << type_name<decltype(x)>() << std::endl;
-  type_dispatch z;
-  std::cout << type_name<decltype(z.signed_integer)>() << std::endl;
-  std::cout << type_name<decltype(z.signed_integer.value)>() << std::endl;
-  std::cout << std::uint32_t{ z.signed_integer.value } << std::endl;
-
-  zz<int>::TraitType as_int;
-  std::cout << type_name<decltype(as_int)>() << " -> x " << as_int.x << std::endl;
-
-  zz<unsigned int>::TraitType as_uint;
-  std::cout << type_name<decltype(as_uint)>() << " -> x " << as_uint.x << std::endl;
-
-  zz<double>::TraitType as_double;
-  std::cout << type_name<decltype(as_double)>() << " -> x " << as_double.x << std::endl;
-
-  zz<bool>::TraitType as_bool;
-  std::cout << type_name<decltype(as_bool)>() << " -> x " << as_bool.x << std::endl;
+{ //  type_dispatch z;
+  //  std::cout << type_name<decltype(z.signed_integer)>() << std::endl;
+  //  std::cout << type_name<decltype(z.signed_integer.value)>() << std::endl;
+  adapter<int> f;
+  std::cout << f.x << std::endl;
+  adapter<bool> b;
+  std::cout << b.x << std::endl;
 }
 }  // namespace trait_select_test
 

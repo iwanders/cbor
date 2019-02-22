@@ -67,11 +67,11 @@ std::size_t to_cbor(const T& v, Data&&... data)
   return to_cbor(v, wrapper);
 }
 
-template <typename T, typename... Data, std::enable_if_t<detail::const_read_adapter<Data...>::value, int> = 0>
-std::size_t from_cbor(T& v, Data&&... data)
+template <typename T, typename Arg0, typename... ArgN, std::enable_if_t<detail::const_read_adapter<Arg0>::value, int> = 0>
+std::size_t from_cbor(T& v, Arg0&& arg0, ArgN&&... argn)
 {
-  using const_adaptor = detail::const_read_adapter<Data...>;
-  auto wrapper = const_adaptor::adapt(std::forward<Data>(data)...);
+  using const_adaptor = detail::const_read_adapter<Arg0>;
+  auto wrapper = const_adaptor::adapt(std::forward<Arg0>(arg0), std::forward<ArgN>(argn)...);
   return from_cbor(v, wrapper);
 }
 }  // namespace cbor

@@ -62,17 +62,19 @@ struct write_adapter<DataType*, std::size_t> : std::true_type
 };
 
 template <>
-struct read_adapter<const DataType*, const std::size_t> : std::true_type
+struct read_adapter<const DataType*> : std::true_type
 {
   const DataType* data;
   std::size_t max_length;
   std::size_t cursor = 0;
-  static read_adapter<const DataType*, const std::size_t> adapt(const DataType* d, const std::size_t s)
+  template <typename T>
+  static read_adapter<const DataType*> adapt(const DataType* d, const T s)
   {
-    return read_adapter<const DataType*, const std::size_t>{ d, s };
+    return read_adapter<const DataType*>{ d, s };
   }
 
-  read_adapter<const DataType*, const std::size_t>(const DataType* d, const std::size_t size)
+  template <typename T>
+  read_adapter<const DataType*>(const DataType* d, const T size)
     : data{ d }, max_length{ size } {};
   std::size_t position() const
   {
@@ -100,11 +102,11 @@ struct read_adapter<const DataType*, const std::size_t> : std::true_type
   }
 };
 template <>
-struct read_adapter<const DataType* const&, const std::size_t&> : read_adapter<const DataType*, const std::size_t>
+struct read_adapter<const DataType* const&> : read_adapter<const DataType*>
 {
 };
 template <>
-struct read_adapter<DataType* const, const std::size_t> : read_adapter<const DataType*, const std::size_t>
+struct read_adapter<DataType* const> : read_adapter<const DataType*>
 {
 };
 
