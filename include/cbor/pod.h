@@ -528,5 +528,47 @@ struct traits<const char*>
   }
 };
 
+template <typename ArrayElement>
+struct traits<trait_families::c_array_family, ArrayElement>
+{
+  using Type = ArrayElement;
+
+  template <typename InType, typename Data, size_t N>
+  static std::size_t serializer(const InType (&d)[N], Data& data)
+  {
+    std::size_t addition = 0;
+    addition += serializeItem(0b100, N, data);
+    for (std::size_t i = 0 ; i < N; i++)
+    {
+      addition += to_cbor(d[i], data);
+    }
+    return addition;
+  }
+  template <typename InType, typename Data, size_t N>
+  static std::size_t deserializer(InType (&d)[N], Data& data)
+  {
+    std::uint8_t first_byte;
+    std::uint64_t length = 0;
+    std::size_t len = deserializeItem(first_byte, length, data);
+    if (length != N)
+    {
+      // todo incorrect length.
+    }
+    if ((first_byte >> 5) == 0b100)
+    {
+      for (std::size_t i = 0; i < length; i++)
+        {
+          len += from_cbor(d[i], data);
+        }
+    }
+    else
+    {
+      // todo incorrect type.
+    }
+    return len;
+  }
+};
+
+
 }  // namespace detail
 }  // namespace cbor

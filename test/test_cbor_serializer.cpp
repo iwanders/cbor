@@ -209,6 +209,7 @@ void test_stl()
 
 void test_array()
 {
+  // Serializing into and from array:
   {
     unsigned int input{ 2 };
     Data result = { 0x02 };
@@ -238,6 +239,21 @@ void test_array()
     test(read_back, input);
     cbor::from_cbor(read_back, offset, size);
     test(read_back, input);
+  }
+
+  {
+    unsigned int my_int_array[2] = { 1, 2 };
+    Data result = { 0x82, 0x01, 0x02 };
+    std::array<cbor::DataType, 100> z;
+    std::size_t len = cbor::to_cbor(my_int_array, z.data(), z.size());
+    test(cbor::hexdump(result), cbor::hexdump(z, len));
+
+    
+    unsigned int read_back[2] = { 0, 0 };
+    cbor::from_cbor(read_back, z.data(), z.size());
+    test(read_back[0], my_int_array[0]);
+    test(read_back[1], my_int_array[1]);
+
   }
 }
 

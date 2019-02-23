@@ -70,7 +70,8 @@ struct trait_families
   using signed_integer = std::integral_constant<type, 1>;
   using unsigned_integer = std::integral_constant<type, 2>;
   using floating_point = std::integral_constant<type, 3>;
-  using max = std::integral_constant<type, 4>;
+  using c_array_family = std::integral_constant<type, 4>;
+  using max = std::integral_constant<type, 5>;
 };
 
 // Base trait selector class.
@@ -114,6 +115,15 @@ struct trait_selector<trait_families::floating_point::value, T>
   using Family = trait_families::floating_point;
   using Trait = detail::traits<trait_families::floating_point, T>;
   static const bool applies = std::is_floating_point<T>::value;
+};
+
+template <typename T>
+struct trait_selector<trait_families::c_array_family::value, T>
+{
+  using Type = T;
+  using Family = trait_families::c_array_family;
+  using Trait = detail::traits<trait_families::c_array_family, T>;
+  static const bool applies = std::is_array<T>::value;
 };
 
 // Recursively calling templated class to find the approprpiate family, or fall through.
