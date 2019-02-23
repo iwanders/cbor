@@ -96,6 +96,18 @@ void test_associatives()
     cbor::to_cbor(input, cbor_representation);
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
+  // indefinite array 
+  {
+    Data input = {0x9f, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x18, 0x18, 0x19, 0xff};
+    std::vector<cbor::DataType> result;
+    std::vector<cbor::DataType> expected_result;
+    for (std::size_t i = 1; i < 26 ; i++)
+    {
+      expected_result.push_back(i);
+    }
+    cbor::from_cbor(result, input);
+    test(cbor::hexdump(result), cbor::hexdump(expected_result));
+  }
   // test string map
   {
     std::map<std::string, std::string> input{ { "a", "A" }, { "b", "B" }, { "c", "C" }, { "d", "D" }, { "e", "E" } };

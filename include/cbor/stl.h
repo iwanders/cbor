@@ -70,7 +70,7 @@ struct write_adapter<Data> : std::true_type
 };
 
 template <>
-struct read_adapter<Data> : std::true_type
+struct read_adapter<Data> : std::true_type, read_adapter_helper<read_adapter<Data>>
 {
   const Data& data;
   std::size_t cursor = 0;
@@ -233,28 +233,19 @@ struct traits<std::vector<T>>
   template <typename Data>
   static std::size_t deserializer(Type& v, Data& data)
   {
-    std::uint8_t first_byte;
-    std::uint64_t length;
-    std::size_t len = deserializeItem(first_byte, length, data);
-    if ((first_byte >> 5) == 0b100)
+    //  std::uint8_t first_byte;
+    //  std::uint64_t length;
+    //  std::size_t len = deserializeItem(first_byte, length, data);
+    if (data.isArray())
     {
-      // it is a list.
-      if ((first_byte & 0b11111) == 31)
+      for (auto& reader : data)
       {
-        // todo indefinite length...
-      }
-      else
-      {
-        v.reserve(length);
-        for (std::size_t i = 0; i < length; i++)
-        {
-          typename Type::value_type tmp;
-          len += from_cbor(tmp, data);
-          v.emplace_back(std::move(tmp));
-        }
+        typename Type::value_type tmp;
+        from_cbor(tmp, reader);
+        v.emplace_back(std::move(tmp));
       }
     }
-    return len;
+    return 0;
   }
 };
 
@@ -519,10 +510,10 @@ struct traits<cbor_object>
 
 std::string cbor_object::prettyPrint(std::size_t indent) const
 {
-  // Create this bespoke read adapter without any copies.
-  const auto& data = serialized_;
-  std::uint8_t first_byte = data.front();
-  std::uint8_t major_type = first_byte >> 5;
+  // Create this read adapter without any copies.
+  const auto& data = serialized_;  
+  using read_adapter_type = detail::get_read_adapter<decltype(data)>;
+  auto reader = read_adapter_type::adapt(std::forward<decltype(data)>(data));
 
   std::stringstream ss;
   auto ind = [&ss](std::size_t line_indent) {
@@ -532,14 +523,14 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
     }
   };
   // simple fixed length and built in types:
-  if (major_type == 0b000)
+  if (reader.isUnsignedInt())
   {
     std::uint64_t z;
     from_cbor(z, data);
     ind(indent);
     ss << "unsigned int: " << z << std::endl;
   }
-  if (major_type == 0b001)
+  if (reader.isSignedInt())
   {
     std::int64_t z;
     from_cbor(z, data);
@@ -547,13 +538,18 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
     ss << "negative int: " << z << std::endl;
   }
 
-  if (major_type == 0b111)
+  if (reader.isSimple())
   {
     ind(indent);
-    ss << "0b111: " << std::endl;
+    ss << "0b111: " << reader[reader.position()] << std::endl;
+  }
+  else if (reader.isFloatingPoint())
+  {
+    ind(indent);
+    ss << "floating point: " << reader[reader.position()] << std::endl;
   }
 
-  if (major_type == 0b100)
+  if (reader.isArray())
   {
     std::vector<cbor_object> z;
 
@@ -568,7 +564,7 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
     }
   }
 
-  if (major_type == 0b101)
+  if (reader.isMap())
   {
     std::map<cbor_object, cbor_object> z;
     cbor::from_cbor(z, data);  // yep :)
@@ -584,7 +580,7 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
   }
 
   // String-esque
-  if ((major_type == 0b010) || (major_type == 0b011))
+  if (reader.isBytes() || reader.isText())
   {
     std::string z;
     from_cbor(z, data);

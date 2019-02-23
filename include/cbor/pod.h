@@ -40,6 +40,123 @@ namespace cbor
 {
 namespace detail
 {
+
+template <typename ReadAdapter>
+struct read_adapter_helper
+{
+  ReadAdapter& reader = *static_cast<ReadAdapter*>(this);
+  bool isUnsignedInt() const
+  {
+    return (reader[reader.position()] >> 5) == 0b000;
+  }
+  bool isSignedInt() const
+  {
+    return (reader[reader.position()] >> 5) == 0b001;
+  }
+  bool isBytes() const
+  {
+    return (reader[reader.position()] >> 5) == 0b010;
+  }
+  bool isText() const
+  {
+    return (reader[reader.position()] >> 5) == 0b011;
+  }
+  bool isArray() const
+  {
+    return (reader[reader.position()] >> 5) == 0b100;
+  }
+  bool isMap() const
+  {
+    return (reader[reader.position()] >> 5) == 0b101;
+  }
+  bool isSemanticTag() const
+  {
+    return (reader[reader.position()] >> 5) == 0b110;
+  }
+  bool isSimple() const
+  {
+    return ((reader[reader.position()] >> 5) == 0b110) && (!isFloatingPoint()) && (!isBreak());
+  }
+  bool isFloatingPoint() const
+  {
+    return (reader[reader.position()] == ((0b111<<5) | 26)) || (reader[reader.position()] == ((0b111<<5) | 27));
+  }
+  bool isBreak() const
+  {
+    return reader[reader.position()] == 255;
+  }
+
+  struct it
+  {
+    ReadAdapter* reader_;
+    bool indefinite { false };
+    std::uint64_t length { 0 };
+    it(ReadAdapter& reader)
+    {
+      if ((reader[reader.position()] & 0b11111) == 31)
+      {
+        reader.advance(1);
+        indefinite = true;
+      }
+      else
+      {
+        std::uint8_t first_byte;
+        std::size_t len = deserializeItem(first_byte, length, reader);
+        std::cout << "len: " << len << std::endl;
+      }
+      reader_ = &reader;
+    }
+    it()
+    {
+    }
+
+
+    //! ++ operator for the iterator, basically a nop.
+    it& operator++()
+    {
+      length--;
+      return *this;
+    }
+
+    //! Dereference operator to make it return the entry reference.
+    ReadAdapter& operator*()
+    {
+      return *reader_;
+    }
+
+    //! Comparison operator to make list for loop terminate.
+    bool operator!=(const it& /*v*/)
+    {
+      if (indefinite)
+      {
+        bool is_break = reader_->isBreak();
+        if (is_break)
+        {
+          reader_->advance(1);
+        }
+        return !is_break;
+      }
+      return (length != 0);
+    }
+  };
+
+  /**
+   * @brief The begin iterator.
+   */
+  it begin()
+  {
+    return it(reader);
+  }
+
+  /**
+   * @brief The end iterator.
+   */
+  it end()
+  {
+    return it();
+  }
+};
+
 template <>
 struct write_adapter<DataType*> : std::true_type
 {
@@ -79,7 +196,7 @@ struct write_adapter<DataType*> : std::true_type
 };
 
 template <>
-struct read_adapter<DataType*> : std::true_type
+struct read_adapter<DataType*> : std::true_type, read_adapter_helper<read_adapter<DataType*>>
 {
   const DataType* data;
   std::size_t max_length;
