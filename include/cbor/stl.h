@@ -233,9 +233,6 @@ struct traits<std::vector<T>>
   template <typename Data>
   static std::size_t deserializer(Type& v, Data& data)
   {
-    //  std::uint8_t first_byte;
-    //  std::uint64_t length;
-    //  std::size_t len = deserializeItem(first_byte, length, data);
     if (data.isArray())
     {
       for (auto& reader : data)
@@ -388,27 +385,21 @@ struct traits<std::map<KeyType, ValueType>>
   template <typename Data>
   static std::size_t deserializer(Type& v, Data& data)
   {
-    std::uint8_t first_byte;
-    std::uint64_t length;
-    std::size_t len = deserializeItem(first_byte, length, data);
-    if ((first_byte >> 5) == 0b101)
+    std::size_t len = 0;
+    if (data.isMap())
     {
-      // it is a map!
-      if ((first_byte & 0b11111) == 31)
+      for (auto& reader : data)
       {
-        // todo indefinite length...
+        typename Type::key_type key;
+        typename Type::mapped_type value;
+        len += from_cbor(key, reader);
+        len += from_cbor(value, reader);
+        v.emplace(std::move(key), std::move(value));
       }
-      else
-      {
-        for (std::size_t i = 0; i < length; i++)
-        {
-          typename Type::key_type key;
-          typename Type::mapped_type value;
-          len += from_cbor(key, data);
-          len += from_cbor(value, data);
-          v.emplace(std::move(key), std::move(value));
-        }
-      }
+    }
+    else
+    {
+      // incorrect type
     }
     return len;
   }
