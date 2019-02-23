@@ -65,23 +65,27 @@ using get_write_adapter = write_adapter<typename std::decay<T>::type>;
 // Something to dispatch types to their appropriate trait.
 struct trait_families
 {
+  static const uint8_t expansion_slots = 5;
   using type = uint8_t;
   using orphan = std::integral_constant<type, 0>;
   using signed_integer = std::integral_constant<type, 1>;
   using unsigned_integer = std::integral_constant<type, 2>;
   using floating_point = std::integral_constant<type, 3>;
   using c_array_family = std::integral_constant<type, 4>;
-  using max = std::integral_constant<type, 5>;
+  using real_max = std::integral_constant<type, 5>;
+  using max = std::integral_constant<type, real_max::value + expansion_slots>;
 };
 
 // Base trait selector class.
 template <trait_families::type, typename T>
 struct trait_selector
 {
+  static const bool applies = false;  // defaults to apply false to iterate to the next entry.
 };
 
+// Catch all trait in case a type doesn't belong to any family.
 template <typename T>
-struct trait_selector<0, T>
+struct trait_selector<trait_families::orphan::value, T>
 {
   static const bool applies = true;
   using Type = T;
@@ -89,7 +93,7 @@ struct trait_selector<0, T>
   using Trait = detail::traits<Type>;
 };
 
-// Family selectors.
+// Family selectors, this allows treating multiple types using the same handlers.
 template <typename T>
 struct trait_selector<trait_families::signed_integer::value, T>
 {
@@ -109,7 +113,7 @@ struct trait_selector<trait_families::unsigned_integer::value, T>
 };
 
 template <typename T>
-struct trait_selector<trait_families::floating_point::value, T>
+struct trait_selector<trait_families::floating_point::value, T>  // double and float
 {
   using Type = T;
   using Family = trait_families::floating_point;
@@ -118,7 +122,7 @@ struct trait_selector<trait_families::floating_point::value, T>
 };
 
 template <typename T>
-struct trait_selector<trait_families::c_array_family::value, T>
+struct trait_selector<trait_families::c_array_family::value, T>  // any c style array, like; int x[3]; or Foo x[5];
 {
   using Type = T;
   using Family = trait_families::c_array_family;

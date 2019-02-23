@@ -79,7 +79,7 @@ struct read_adapter<Data> : std::true_type
     return read_adapter<Data>{ d };
   }
   read_adapter<Data>(const Data& d) : data{ d } {};
-  //  read_adapter<const Data&>(Data& d) : data{d} {};
+
   std::size_t position() const
   {
     return cursor;
@@ -105,18 +105,7 @@ struct read_adapter<Data> : std::true_type
     return data[pos];
   }
 };
-//  template <> struct read_adapter<Data&> : read_adapter<const Data&>{};
 }  // namespace detail
-
-std::string hexdump(const Data& d)
-{
-  std::stringstream ss;
-  for (const auto& v : d)
-  {
-    ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ v } << " ";
-  }
-  return ss.str();
-}
 
 std::string hexdump(const DataType* d, std::size_t length)
 {
@@ -126,6 +115,11 @@ std::string hexdump(const DataType* d, std::size_t length)
     ss << "" << std::setfill('0') << std::setw(2) << std::hex << int{ d[i] } << " ";
   }
   return ss.str();
+}
+
+std::string hexdump(const Data& d)
+{
+  return hexdump(d.data(), d.size());
 }
 
 template <size_t Length>
@@ -159,9 +153,10 @@ public:
 
   std::string prettyPrint(std::size_t indent = 0) const;
 };
+
 std::string hexdump(const cbor_object& d)
 {
-  return hexdump(d.serialized_.data(), d.serialized_.size());
+  return hexdump(d.serialized_);
 }
 
 namespace detail
