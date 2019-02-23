@@ -211,8 +211,9 @@ struct traits<std::string>
     std::uint64_t string_length;
     std::size_t len = deserializeInteger(0b011, string_length, data);
     v.clear();
-    v.insert(v.begin(), &(data[data.position()]), &(data[data.position()]) + string_length);
-    data.advance(string_length);
+    std::size_t offset = data.position();
+    data.advance(string_length);  // advance before reading.
+    v.insert(v.begin(), &(data[offset]), &(data[offset]) + string_length);
     return len + string_length;
   }
 };
