@@ -157,131 +157,39 @@ public:
     return serialized_ < a.serialized_;
   }
 
-  std::string prettyPrint(std::size_t indent = 0) const
-  {
-    // Create this bespoke read adapter without any copies.
-    detail::read_adapter<Data> data = detail::read_adapter<Data>{ serialized_ };
-    std::uint8_t first_byte = data[data.position()];
-    std::uint8_t major_type = first_byte >> 5;
-
-    std::stringstream ss;
-    auto ind = [&ss](std::size_t indent) {
-      for (std::size_t i = 0; i < indent; i++)
-      {
-        ss << " ";
-      }
-    };
-    // simple fixed length and built in types:
-    if (major_type == 0b000)
-    {
-      std::uint64_t z;
-      from_cbor(z, data);
-      //  cbor::deserialize(z, data);
-      ind(indent);
-      ss << "unsigned int: " << z << std::endl;
-    }
-    if (major_type == 0b001)
-    {
-      std::int64_t z;
-      from_cbor(z, data);
-      //  cbor::deserialize(z, data);
-      ind(indent);
-      ss << "negative int: " << z << std::endl;
-    }
-
-    if (major_type == 0b111)
-    {
-      ind(indent);
-      ss << "0b111: " << std::endl;
-    }
-
-    if (major_type == 0b100)
-    {
-      //  using ::cbor::from_cbor;
-      std::vector<cbor_object> z;
-      //  from_cbor(z, data);  // nope :(
-
-      const cbor::DataType* offset = &(data[data.position()]);
-      const std::size_t size = data.size() - data.position();
-      cbor::from_cbor(z, offset, size);  // yep :)
-
-      ind(indent);
-      ss << "array #" << z.size() << std::endl;
-
-      for (const auto& v : z)
-      {
-        ss << v.prettyPrint(indent + 1);
-      }
-    }
-
-    if (major_type == 0b101)
-    {
-      std::map<cbor_object, cbor_object> z;
-      //  from_cbor(z, data);
-      const cbor::DataType* offset = &(data[data.position()]);
-      const std::size_t size = data.size() - data.position();
-      cbor::from_cbor(z, offset, size);  // yep :)
-
-      ind(indent);
-      ss << "map #" << z.size() << std::endl;
-
-      for (const auto& k_v : z)
-      {
-        ss << k_v.first.prettyPrint(indent + 1);
-        ss << k_v.second.prettyPrint(indent + 1);
-      }
-    }
-
-    // String-esque
-    if ((major_type == 0b010) || (major_type == 0b011))
-    {
-      std::string z;
-      //  from_cbor(z, data);
-      const cbor::DataType* offset = &(data[data.position()]);
-      const std::size_t size = data.size() - data.position();
-      cbor::from_cbor(z, offset, size);  // yep :)
-
-      ind(indent);
-      ss << "str #" << z.size() << ":" << z << std::endl;
-    }
-    return ss.str();
-  }
+  std::string prettyPrint(std::size_t indent = 0) const;
 };
 std::string hexdump(const cbor_object& d)
 {
   return hexdump(d.serialized_.data(), d.serialized_.size());
 }
 
+
 namespace detail
 {
 template <>
-struct write_adapter<cbor_object> : std::true_type
+struct write_adapter<cbor_object> : write_adapter<Data>
 {
-  
   cbor_object& o;
   static write_adapter<cbor_object> adapt(cbor_object& d)
   {
     return write_adapter<cbor_object>{ d };
   }
-  write_adapter<cbor_object>(cbor_object& d) : o{ d } {};
-
-  void resize(std::uint32_t value)
-  {
-    o.serialized_.resize(value);
-  }
-  std::uint32_t size() const
-  {
-    return o.serialized_.size();
-  }
-  DataType& operator[](std::size_t pos)
-  {
-    return o.serialized_[pos];
-  }
+  write_adapter<cbor_object>(cbor_object& d) : write_adapter<Data>{ d.serialized_ }, o {d} {};
 
   // Allow unwrapping the adapter from the object...
   operator cbor_object&()
   {
     return o;
+  }
+};
+
+template <>
+struct read_adapter<cbor_object> : std::true_type
+{
+  static read_adapter<Data> adapt(const cbor_object& d)
+  {
+    return read_adapter<Data>{ d.serialized_ };
   }
 };
 
@@ -613,4 +521,85 @@ struct traits<cbor_object>
   }
 };
 }  // namespace detail
+
+
+
+std::string cbor_object::prettyPrint(std::size_t indent) const
+{
+  // Create this bespoke read adapter without any copies.
+  const auto& data = serialized_;
+  std::uint8_t first_byte = data.front();
+  std::uint8_t major_type = first_byte >> 5;
+
+  std::stringstream ss;
+  auto ind = [&ss](std::size_t indent) {
+    for (std::size_t i = 0; i < indent; i++)
+    {
+      ss << " ";
+    }
+  };
+  // simple fixed length and built in types:
+  if (major_type == 0b000)
+  {
+    std::uint64_t z;
+    from_cbor(z, data);
+    ind(indent);
+    ss << "unsigned int: " << z << std::endl;
+  }
+  if (major_type == 0b001)
+  {
+    std::int64_t z;
+    from_cbor(z, data);
+    ind(indent);
+    ss << "negative int: " << z << std::endl;
+  }
+
+  if (major_type == 0b111)
+  {
+    ind(indent);
+    ss << "0b111: " << std::endl;
+  }
+
+  if (major_type == 0b100)
+  {
+    std::vector<cbor_object> z;
+
+    cbor::from_cbor(z, data);  // yep :)
+
+    ind(indent);
+    ss << "array #" << z.size() << std::endl;
+
+    for (const auto& v : z)
+    {
+      ss << v.prettyPrint(indent + 1);
+    }
+  }
+
+  if (major_type == 0b101)
+  {
+    std::map<cbor_object, cbor_object> z;
+    cbor::from_cbor(z, data);  // yep :)
+
+    ind(indent);
+    ss << "map #" << z.size() << std::endl;
+
+    for (const auto& k_v : z)
+    {
+      ss << k_v.first.prettyPrint(indent + 1);
+      ss << k_v.second.prettyPrint(indent + 1);
+    }
+  }
+
+  // String-esque
+  if ((major_type == 0b010) || (major_type == 0b011))
+  {
+    std::string z;
+    from_cbor(z, data);
+    ind(indent);
+    ss << "str #" << z.size() << ":" << z << std::endl;
+  }
+  return ss.str();
+}
+
+
 }  // namespace cbor
