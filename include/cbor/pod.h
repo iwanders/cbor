@@ -50,17 +50,19 @@ struct write_adapter<DataType*> : std::true_type
   template <typename T>
   static write_adapter<DataType*> adapt(DataType* d, const T size)
   {
-    return write_adapter<DataType*>{d, size};
+    return write_adapter<DataType*>{ d, size };
   }
 
   template <size_t N>
   static write_adapter<DataType*> adapt(DataType (&d)[N])
   {
-    return write_adapter<DataType*>{d, N};
+    return write_adapter<DataType*>{ d, N };
   }
 
   template <typename T>
-  write_adapter<DataType*>(DataType* d, const T size) : data{ d }, max_length{ size } {};
+  write_adapter<DataType*>(DataType* d, const T size) : data{ d }, max_length{ size }
+  {
+  }
 
   void resize(std::uint32_t value)
   {
@@ -95,8 +97,9 @@ struct read_adapter<DataType*> : std::true_type
   }
 
   template <typename T>
-  read_adapter<DataType*>(const DataType* d, const T size)
-    : data{ d }, max_length{ size } {};
+  read_adapter<DataType*>(const DataType* d, const T size) : data{ d }, max_length{ size }
+  {
+  }
   std::size_t position() const
   {
     return cursor;
@@ -406,7 +409,6 @@ struct traits<std::nullptr_t>
 template <typename IntegerType>
 struct traits<trait_families::unsigned_integer, IntegerType>
 {
-
   template <typename Type, typename Data>
   static std::size_t serializer(const Type& v, Data& data)
   {
@@ -443,7 +445,6 @@ struct traits<trait_families::signed_integer, Type>
     return deserializeSignedInteger(v, data);
   }
 };
-
 
 template <typename T>
 struct trait_floating_point_helper

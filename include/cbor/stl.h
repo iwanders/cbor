@@ -164,7 +164,6 @@ std::string hexdump(const cbor_object& d)
   return hexdump(d.serialized_.data(), d.serialized_.size());
 }
 
-
 namespace detail
 {
 template <>
@@ -175,7 +174,7 @@ struct write_adapter<cbor_object> : write_adapter<Data>
   {
     return write_adapter<cbor_object>{ d };
   }
-  write_adapter<cbor_object>(cbor_object& d) : write_adapter<Data>{ d.serialized_ }, o {d} {};
+  write_adapter<cbor_object>(cbor_object& d) : write_adapter<Data>{ d.serialized_ }, o{ d } {};
 
   // Allow unwrapping the adapter from the object...
   operator cbor_object&()
@@ -523,8 +522,6 @@ struct traits<cbor_object>
 };
 }  // namespace detail
 
-
-
 std::string cbor_object::prettyPrint(std::size_t indent) const
 {
   // Create this bespoke read adapter without any copies.
@@ -533,8 +530,8 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
   std::uint8_t major_type = first_byte >> 5;
 
   std::stringstream ss;
-  auto ind = [&ss](std::size_t indent) {
-    for (std::size_t i = 0; i < indent; i++)
+  auto ind = [&ss](std::size_t line_indent) {
+    for (std::size_t i = 0; i < line_indent; i++)
     {
       ss << " ";
     }
@@ -601,6 +598,5 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
   }
   return ss.str();
 }
-
 
 }  // namespace cbor

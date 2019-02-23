@@ -47,9 +47,13 @@ struct traits;
  * @brief Structs for the read and write adapters.
  */
 template <typename... Data>
-struct write_adapter : std::false_type {};
+struct write_adapter : std::false_type
+{
+};
 template <typename... Data>
-struct read_adapter : std::false_type {};
+struct read_adapter : std::false_type
+{
+};
 
 // Retrieval helpers.
 template <typename T>
@@ -57,8 +61,6 @@ using get_read_adapter = read_adapter<typename std::decay<T>::type>;
 
 template <typename T>
 using get_write_adapter = write_adapter<typename std::decay<T>::type>;
-
-
 
 // Something to dispatch types to their appropriate trait.
 struct trait_families
@@ -85,7 +87,6 @@ struct trait_selector<0, T>
   using Family = T;
   using Trait = detail::traits<Type>;
 };
-
 
 // Family selectors.
 template <typename T>
@@ -115,13 +116,12 @@ struct trait_selector<trait_families::floating_point::value, T>
   static const bool applies = std::is_floating_point<T>::value;
 };
 
-
 // Recursively calling templated class to find the approprpiate family, or fall through.
-template <typename T, uint8_t index = trait_families::max::value-1>
+template <typename T, uint8_t index = trait_families::max::value - 1>
 struct trait_dispatcher
 {
   using Type = typename std::conditional<trait_selector<index, T>::applies, trait_selector<index, T>,
-                                              typename trait_dispatcher<T, index - 1>::Type>::type;
+                                         typename trait_dispatcher<T, index - 1>::Type>::type;
 };
 
 template <typename T>
@@ -134,7 +134,6 @@ struct trait_dispatcher<T, 0>
 // Some helpers to check whether a type is supported by our traits.
 template <typename T>
 using has_trait = std::is_default_constructible<typename detail::trait_dispatcher<T>::Type::Trait>;
-
 
 }  // namespace detail
 }  // namespace cbor

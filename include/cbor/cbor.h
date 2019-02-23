@@ -37,7 +37,6 @@
 
 namespace cbor
 {
-
 namespace detail
 {
 template <typename T, typename... Data, std::enable_if_t<has_trait<T>::value, int> = 0>
@@ -46,7 +45,6 @@ std::size_t to_cbor(const T& v, detail::write_adapter<Data...>& data)
   return detail::trait_dispatcher<T>::Type::Trait::serializer(v, data);
 }
 
-
 template <typename T, typename... Data, std::enable_if_t<has_trait<T>::value, int> = 0>
 std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
 {
@@ -54,13 +52,13 @@ std::size_t from_cbor(T& v, detail::read_adapter<Data...>& data)
 }
 }  // namespace detail
 
-
 /**
  * @brief Entry to the trait system, serializes v into data.
  * @param v The data to serialize.
  * @param data The data vector to serialize into.
  */
-template <typename T, typename Arg0, typename... ArgN, std::enable_if_t<detail::get_write_adapter<Arg0>::value, int> = 0>
+template <typename T, typename Arg0, typename... ArgN,
+          std::enable_if_t<detail::get_write_adapter<Arg0>::value, int> = 0>
 std::size_t to_cbor(const T& v, Arg0&& arg0, ArgN&&... argn)
 {
   using write_adapter = detail::get_write_adapter<Arg0>;

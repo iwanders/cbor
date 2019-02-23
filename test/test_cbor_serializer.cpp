@@ -424,7 +424,7 @@ struct Buz
   std::uint32_t f;
 };
 /*
-*/
+ */
 std::size_t to_cbor(const Buz& b, cbor::cbor_object& data)
 {
   std::cout << "to cbor_object_ser adl " << std::endl;
@@ -453,7 +453,7 @@ void test_into_object()
     cbor_object_ser::Buz z{ 2 };
     Data result = { 0x02 };
     //  Data cbor_representation;
-    cbor::to_cbor(z, cbor_representation);   //<--- todo: We lost this one :( 
+    cbor::to_cbor(z, cbor_representation);  //<--- todo: We lost this one :(
     test(cbor::hexdump(result), cbor::hexdump(cbor_representation));
   }
 
@@ -511,23 +511,23 @@ void test_into_object()
 
 namespace trait_select_test
 {
-template <typename T, typename T2= void>
+template <typename T, typename T2 = void>
 struct adapter;
 
 template <typename T>
-struct adapter<T , typename std::enable_if_t<std::is_same<T, bool>::value, void>>
+struct adapter<T, typename std::enable_if_t<std::is_same<T, bool>::value, void>>
 {
   const int x = 3;
 };
 
 template <typename T>
-struct adapter<T , typename std::enable_if_t<std::is_same<T, int>::value, void>>
+struct adapter<T, typename std::enable_if_t<std::is_same<T, int>::value, void>>
 {
   const int x = 5;
 };
 
 void test2()
-{ //  type_dispatch z;
+{  //  type_dispatch z;
   //  std::cout << type_name<decltype(z.signed_integer)>() << std::endl;
   //  std::cout << type_name<decltype(z.signed_integer.value)>() << std::endl;
   adapter<int> f;
@@ -536,7 +536,6 @@ void test2()
   std::cout << b.x << std::endl;
 }
 
-
 // Make all template arguments const!
 template <typename T>
 using X = typename std::decay<T>::type;
@@ -544,28 +543,36 @@ using X = typename std::decay<T>::type;
 void test()
 {
   {
-    using A = const unsigned char*; std::cout << "base:" << type_name<A>() << "      " << type_name<X< A >>() << std::endl;
-    using B = const unsigned char*&; std::cout << "base:" << type_name<B>() << "      " << type_name<X< B >>() << std::endl;
-    using C = unsigned char*; std::cout << "base:" << type_name<C>() << "      " << type_name<X< C >>() << std::endl;
-    using D = unsigned char*&; std::cout << "base:" << type_name<D>() << "      " << type_name<X< D >>() << std::endl;
+    using A = const unsigned char*;
+    std::cout << "base:" << type_name<A>() << "      " << type_name<X<A>>() << std::endl;
+    using B = const unsigned char*&;
+    std::cout << "base:" << type_name<B>() << "      " << type_name<X<B>>() << std::endl;
+    using C = unsigned char*;
+    std::cout << "base:" << type_name<C>() << "      " << type_name<X<C>>() << std::endl;
+    using D = unsigned char*&;
+    std::cout << "base:" << type_name<D>() << "      " << type_name<X<D>>() << std::endl;
   }
 
   std::cout << std::endl;
-  using E = Data; std::cout << "base:" << type_name<E>() << "     " << type_name<X< E >>() << std::endl;
-  using F = Data&; std::cout << "base:" << type_name<F>() << "      " << type_name<X< F >>() << std::endl;
-  using G = const Data&; std::cout << "base:" << type_name<G>() << "      " << type_name<X< G >>() << std::endl;
+  using E = Data;
+  std::cout << "base:" << type_name<E>() << "     " << type_name<X<E>>() << std::endl;
+  using F = Data&;
+  std::cout << "base:" << type_name<F>() << "      " << type_name<X<F>>() << std::endl;
+  using G = const Data&;
+  std::cout << "base:" << type_name<G>() << "      " << type_name<X<G>>() << std::endl;
   std::cout << std::endl;
 
   {
-    using A = const unsigned char[3]; std::cout << "base:" << type_name<A>() << "      " << type_name<X< A >>() << std::endl;
-    using B = const unsigned char[3]; std::cout << "base:" << type_name<B>() << "      " << type_name<X< B >>() << std::endl;
-    using C = unsigned char[3]; std::cout << "base:" << type_name<C>() << "      " << type_name<X< C >>() << std::endl;
-    using D = unsigned char[3]; std::cout << "base:" << type_name<D>() << "      " << type_name<X< D >>() << std::endl;
+    using A = const unsigned char[3];
+    std::cout << "base:" << type_name<A>() << "      " << type_name<X<A>>() << std::endl;
+    using B = const unsigned char[3];
+    std::cout << "base:" << type_name<B>() << "      " << type_name<X<B>>() << std::endl;
+    using C = unsigned char[3];
+    std::cout << "base:" << type_name<C>() << "      " << type_name<X<C>>() << std::endl;
+    using D = unsigned char[3];
+    std::cout << "base:" << type_name<D>() << "      " << type_name<X<D>>() << std::endl;
   }
-
 }
-
-
 
 }  // namespace trait_select_test
 
