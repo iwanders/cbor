@@ -286,6 +286,21 @@ void test_array()
     test(read_back[0], my_int_array[0]);
     test(read_back[1], my_int_array[1]);
   }
+
+  {
+    std::array<unsigned int, 2> my_int_array = { 1, 2 };
+    Data result = { 0x82, 0x01, 0x02 };
+    std::array<cbor::DataType, 100> z;
+    auto res = cbor::to_cbor(my_int_array, z.data(), z.size());
+    test(cbor::hexdump(result), cbor::hexdump(z, res));
+    test(bool(res), true);
+    test(std::size_t(res), result.size());
+
+    std::array<unsigned int, 2> read_back = { 0, 0 };
+    cbor::from_cbor(read_back, z.data(), z.size());
+    test(read_back[0], my_int_array[0]);
+    test(read_back[1], my_int_array[1]);
+  }
 }
 
 namespace foo
@@ -308,8 +323,8 @@ cbor::result from_cbor(Bar& b, cbor::detail::read_adapter<Data...>& data)
   std::cout << "from_cbor adl" << std::endl;
   return from_cbor(b.f, data);
 }
-
 }  // namespace foo
+
 void test_adl()
 {
   {
@@ -392,7 +407,6 @@ std::size_t to_cbor(const Buz& b, cbor::cbor_object& data)
   return to_cbor(b.f, data);
   return 0;
 }
-
 }  // namespace cbor_object_ser
 
 /*
@@ -465,6 +479,132 @@ void test_into_object()
     cbor::from_cbor(cbor_res, cbor_data);
     test(cbor::hexdump(cbor_res.serialized_), cbor::hexdump(cbor_data));
     std::cout << cbor_res.prettyPrint() << std::endl;
+  }
+}
+
+namespace compound_type
+{
+struct Bar
+{
+  std::uint32_t f;
+  std::uint32_t x;
+};
+
+template <typename... Data>
+cbor::result to_cbor(const Bar& b, cbor::detail::write_adapter<Data...>& data)
+{
+  std::array<cbor::cbor_object, 2> z;
+  z[0] = b.f;
+  z[1] = b.x;
+  return to_cbor(z, data);
+}
+
+template <typename... Data>
+cbor::result from_cbor(Bar& b, cbor::detail::read_adapter<Data...>& data)
+{
+  std::array<cbor::cbor_object, 2> z;
+  auto res = from_cbor(z, data);
+  auto subres = z[0].get_to(b.f);   // always ok.
+  b.x = z[1].get<decltype(b.x)>();  // if exceptions enabled.
+  if (!subres)                      // if local parsing failed, return error.
+  {
+    return subres;
+  }
+  return res;
+}
+
+struct Buz
+{
+  std::uint32_t f;
+  std::uint32_t x;
+};
+template <typename... Data>
+cbor::result to_cbor(const Buz& b, cbor::detail::write_adapter<Data...>& data)
+{
+  std::map<std::string, cbor::cbor_object> representation;
+  representation["f"] = b.f;
+  representation["x"] = b.x;
+  return to_cbor(representation, data);
+}
+
+template <typename... Data>
+cbor::result from_cbor(Buz& b, cbor::detail::read_adapter<Data...>& data)
+{
+  std::map<std::string, cbor::cbor_object> representation;
+  auto res = from_cbor(representation, data);
+  representation.at("f").get_to(b.f);
+  representation.at("x").get_to(b.x);
+  return res;
+}
+
+}  // namespace compound_type
+
+void test_compound_type()
+{
+  {
+    compound_type::Bar input{ 2, 3 };
+    Data expected = { 0x82, 0x02, 0x03 };
+    Data cbor_representation;
+    auto res = cbor::to_cbor(input, cbor_representation);
+    test_result(res, cbor_representation, expected);
+  }
+  {
+    std::vector<compound_type::Bar> input = { compound_type::Bar{ 2, 5 }, compound_type::Bar{ 3, 6 },
+                                              compound_type::Bar{ 4, 7 } };
+    Data expected = { 0x83, 0x82, 0x02, 0x05, 0x82, 0x03, 0x06, 0x82, 0x04, 0x07 };
+    Data cbor_representation;
+    auto res = cbor::to_cbor(input, cbor_representation);
+    test_result(res, cbor_representation, expected);
+
+    std::vector<compound_type::Bar> output;
+    res = cbor::from_cbor(output, cbor_representation);
+    test_result(res, cbor_representation);
+    test(output.size(), 3u);
+    if (output.size() == 3)
+    {
+      test(output[0].f, 2u);
+      test(output[0].x, 5u);
+      test(output[1].f, 3u);
+      test(output[1].x, 6u);
+      test(output[2].f, 4u);
+      test(output[2].x, 7u);
+    }
+  }
+  {
+    std::vector<compound_type::Buz> input = { compound_type::Buz{ 2, 5 }, compound_type::Buz{ 3, 6 },
+                                              compound_type::Buz{ 4, 7 } };
+    Data expected = { 0x83, 0xA2, 0x61, 0x66, 0x02, 0x61, 0x78, 0x05, 0xA2, 0x61, 0x66,
+                      0x03, 0x61, 0x78, 0x06, 0xA2, 0x61, 0x66, 0x04, 0x61, 0x78, 0x07 };
+    Data cbor_representation;
+    auto res = cbor::to_cbor(input, cbor_representation);
+    test_result(res, cbor_representation, expected);
+
+    {
+      std::vector<cbor::cbor_object> output;
+      res = cbor::from_cbor(output, cbor_representation);
+      test(output.size(), 3u);
+      compound_type::Buz zz;
+      cbor::from_cbor(zz, output[0]);
+      test(zz.f, 2u);
+      test(zz.x, 5u);
+      cbor::from_cbor(zz, output[2]);
+      test(zz.f, 4u);
+      test(zz.x, 7u);
+    }
+
+    std::vector<compound_type::Buz> output;
+    res = cbor::from_cbor(output, cbor_representation);
+    test_result(res, cbor_representation);
+    test(output.size(), 3u);
+    if (output.size() == 3)
+    {
+      test(output[0].f, 2u);
+      test(output[0].x, 5u);
+      test(output[1].f, 3u);
+      test(output[1].x, 6u);
+      test(output[2].f, 4u);
+      test(output[2].x, 7u);
+    }
   }
 }
 
@@ -543,7 +683,7 @@ void test_appendix_A_decode(const std::string& hex, const Type expected, bool ro
 }
 void test_appendix_a()
 {
-  // https://github.com/cbor/test-vectors/blob/master/appendix_a.json
+  // https://tools.ietf.org/html/rfc7049#appendix-A
   test_appendix_A_decode<std::uint32_t>("00", 0, true);
   test_appendix_A_decode<std::uint32_t>("01", 1, true);
   test_appendix_A_decode<std::uint32_t>("0a", 10, true);
@@ -589,13 +729,14 @@ void test_appendix_a()
   test_appendix_A_decode<double>("fbfff0000000000000", -std::numeric_limits<double>::infinity(), true);
   test_appendix_A_decode<bool>("f4", false, true);
   test_appendix_A_decode<bool>("f5", true, true);
-
   // can't print this.
   // test_appendix_A_decode<std::nullptr_t>("f6", nullptr, true);
-  // undefined
-  // simple...
+
+  // simple type undefined
+  // simple others
   // tags...
 
+  // Strings
   test_appendix_A_decode<std::string>("60", "", true);
   test_appendix_A_decode<std::string>("6161", "a", true);
   test_appendix_A_decode<std::string>("6449455446", "IETF", true);
@@ -634,8 +775,9 @@ int main(int /* argc */, char** /* argv */)
   test_array();
   test_adl();
   test_into_object();
-  test_result_operators();
-  test_appendix_a();
+  test_compound_type();
+  //  test_result_operators();
+  //  test_appendix_a();
 
   if (failed)
   {

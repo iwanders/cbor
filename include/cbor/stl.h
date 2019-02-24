@@ -162,6 +162,20 @@ public:
     cbor::to_cbor(v, serialized_);
   }
 
+  template <typename T>
+  T get()
+  {
+    T tmp;
+    cbor::from_cbor(tmp, serialized_);
+    return tmp;
+  }
+
+  template <typename T>
+  result get_to(T& t)
+  {
+    return cbor::from_cbor(t, serialized_);
+  }
+
   bool operator<(const cbor_object& a) const
   {
     return serialized_ < a.serialized_;
