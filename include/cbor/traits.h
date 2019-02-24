@@ -49,6 +49,25 @@ struct traits;
 template <typename... Data>
 struct write_adapter : std::false_type
 {
+
+  /**
+   * @brief This function resizes the container to allow writing to it.
+   * @return result whether the container resize succceeded, length is always 0.
+   * @throws Buffer error if container size exceeded maximum size.
+   */
+  //  result resize(std::uint32_t value)
+
+  /**
+   * @brief Return the size of the written contents.
+   */
+  //  std::uint32_t size() const
+
+  /**
+   * @brief This function returns a reference to the character at position pos.
+   * @return Reference to character at position pos, returns last character if out of bounds.
+   * @throws buffer error if reference beyond container size was requested.
+   */
+  //  DataType& operator[](std::size_t pos)
 };
 template <typename... Data>
 struct read_adapter : std::false_type

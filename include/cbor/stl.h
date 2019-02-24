@@ -240,13 +240,16 @@ struct traits<std::vector<T>>
   template <typename Data>
   static result serializer(const Type& v, Data& data)
   {
-    std::size_t addition = 0;
-    addition += serializeItem(0b100, v.size(), data);
+    result res = serializeItem(0b100, v.size(), data);
     for (const auto& k : v)
     {
-      addition += to_cbor(k, data);
+      res += to_cbor(k, data);
+      if (!res)
+      {
+        return res;
+      }
     }
-    return addition;
+    return res;
   }
   template <typename Data>
   static result deserializer(Type& v, Data& data)
@@ -376,11 +379,10 @@ struct traits<std::pair<A, B>>
   template <typename Data>
   static result serializer(const std::pair<A, B>& v, Data& data)
   {
-    std::size_t addition = 0;
-    addition += serializeItem(0b100, uint8_t{ 2 }, data);
-    addition += to_cbor(v.first, data);
-    addition += to_cbor(v.second, data);
-    return addition;
+    result res = serializeItem(0b100, uint8_t{ 2 }, data);
+    res += to_cbor(v.first, data);
+    res += to_cbor(v.second, data);
+    return res;
   }
 
   template <typename Data>
@@ -413,16 +415,19 @@ struct traits<std::map<KeyType, ValueType>>
   template <typename Data>
   static result serializer(const std::map<KeyType, ValueType>& v, Data& data)
   {
-    std::size_t addition = 0;
-    addition += serializeItem(0b101, v.size(), data);
+    result res = serializeItem(0b101, v.size(), data);
     for (const auto& k_v : v)
     {
       const auto& key = k_v.first;
       const auto& value = k_v.second;
-      addition += to_cbor(key, data);
-      addition += to_cbor(value, data);
+      res += to_cbor(key, data);
+      res += to_cbor(value, data);
+      if (!res)
+      {
+        return res;
+      }
     }
-    return addition;
+    return res;
   }
 
   template <typename Data>
@@ -478,12 +483,12 @@ struct traits<cbor_object>
   {
     const auto& v = obj.serialized_;
     std::size_t offset = data.size();
-    data.resize(data.size() + v.size());
+    result res = data.resize(data.size() + v.size());
     for (std::size_t i = 0; i < v.size(); i++)
     {
       data[i + offset] = v[i];
     }
-    return v.size();
+    return res + v.size();
   }
 
   template <typename Data>
@@ -562,7 +567,6 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
 {
   // Create this bespoke read adapter without any copies.
   const auto& data = serialized_;
-  hexdump(data);
   std::uint8_t first_byte = data.front();
   std::uint8_t major_type = first_byte >> 5;
 

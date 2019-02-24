@@ -255,7 +255,10 @@ result serializeItem(const std::uint8_t major_type, const std::uint16_t v, Data&
   result res = data.resize(offset + 2 + 1);
   data[offset] = std::uint8_t(major_type << 5) | 25;
   auto fixed = fixEndianness(v);
-  *reinterpret_cast<std::uint16_t*>(&(data[offset + 1])) = fixed;
+  if (res)
+  { // Only do this if we could resize the data.
+    *reinterpret_cast<std::uint16_t*>(&(data[offset + 1])) = fixed;
+  }
   return res + 3;
 }
 
@@ -273,7 +276,10 @@ result serializeItem(const std::uint8_t major_type, const std::uint32_t v, Data&
   result res = data.resize(offset + 4 + 1);
   auto fixed = fixEndianness(v);
   data[offset] = std::uint8_t(major_type << 5) | 26;
-  *reinterpret_cast<std::uint32_t*>(&(data[offset + 1])) = fixed;
+  if (res)
+  { // Only do this if we could resize the data.
+    *reinterpret_cast<std::uint32_t*>(&(data[offset + 1])) = fixed;
+  }
   return res + 5;
 }
 
@@ -291,7 +297,10 @@ result serializeItem(const std::uint8_t major_type, const std::uint64_t v, Data&
   result res = data.resize(offset + 8 + 1);
   data[offset] = std::uint8_t(major_type << 5) | 27;
   auto fixed = fixEndianness(v);
-  *reinterpret_cast<std::uint64_t*>(&(data[offset + 1])) = fixed;
+  if (res)
+  { // Only do this if we could resize the data.
+    *reinterpret_cast<std::uint64_t*>(&(data[offset + 1])) = fixed;
+  }
   return res + 9;
 }
 
@@ -300,6 +309,7 @@ result deserializeItem(std::uint8_t& first_byte, std::uint64_t& v, Data& data)
 {
   first_byte = data[data.position()];
   std::uint8_t direct = data[data.position()] & 0b11111;
+  std::size_t offset = data.position();
   if (direct < 24)
   {
     v = direct;
@@ -307,29 +317,47 @@ result deserializeItem(std::uint8_t& first_byte, std::uint64_t& v, Data& data)
   }
   else if (direct == 24)  // uint8_t case
   {
-    v = data[data.position() + 1];
-    return data.advance(2);
+    result res = data.advance(2);
+    if (res)
+    {
+      v = data[offset + 1];
+    }
+    return res;
   }
   else if (direct == 25)  // uint16_t case
   {
-    const std::uint16_t intermediate = *reinterpret_cast<const std::uint16_t*>(&(data[data.position() + 1]));
-    v = fixEndianness(intermediate);
-    return data.advance(3);
+    result res = data.advance(3);
+    if (res)
+    {
+      const std::uint16_t intermediate = *reinterpret_cast<const std::uint16_t*>(&(data[offset + 1]));
+      v = fixEndianness(intermediate);
+    }
+    return res;
   }
   else if (direct == 26)
   {
-    const std::uint32_t intermediate = *reinterpret_cast<const std::uint32_t*>(&(data[data.position() + 1]));
-    v = fixEndianness(intermediate);
-    return data.advance(5);
+    result res = data.advance(5);
+    if (res)
+    {
+      const std::uint32_t intermediate = *reinterpret_cast<const std::uint32_t*>(&(data[offset + 1]));
+      v = fixEndianness(intermediate);
+    }
+    return res;
   }
   else if (direct == 27)
   {
-    const std::uint64_t intermediate = *reinterpret_cast<const std::uint64_t*>(&(data[data.position() + 1]));
-    v = fixEndianness(intermediate);
-    return data.advance(9);
+    result res = data.advance(9);
+    if (res)
+    {
+      const std::uint64_t intermediate = *reinterpret_cast<const std::uint64_t*>(&(data[offset + 1]));
+      v = fixEndianness(intermediate);
+    }
+    return res;
   }
   else if (direct == 31)
   {
+    CBOR_PARSE_ERROR("Unhandled direct value");
+    return false;
   }
   return false;
 }
@@ -558,10 +586,13 @@ struct traits<trait_families::floating_point, FloatingPointType>
   {
     serializePrimitive((0b111 << 5) | Helper::minor_type, data);
     const std::size_t offset = data.size();
-    data.resize(offset + sizeof(Type));
-    auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
-    *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
-    return sizeof(Type);
+    result res = data.resize(offset + sizeof(Type));
+    if (res)
+    {
+      auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
+      *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
+    }
+    return res;
   }
 
   template <typename Data>
@@ -599,14 +630,14 @@ struct traits<const char*>
   static result serializer(const Type& v, Data& data)
   {
     std::size_t length = strlen(v);
-    std::size_t addition = serializeItem(0b011, length, data);
+    result res = serializeItem(0b011, length, data);
     std::size_t offset = data.size();
-    data.resize(data.size() + length);
+    res += data.resize(data.size() + length);
     for (std::size_t i = 0; i < length; i++)
     {
       data[i + offset] = v[i];
     }
-    return addition + length;
+    return res + length;
   }
 };
 
@@ -618,13 +649,16 @@ struct traits<trait_families::c_array_family, ArrayElement>
   template <typename InType, typename Data, size_t N>
   static result serializer(const InType (&d)[N], Data& data)
   {
-    std::size_t addition = 0;
-    addition += serializeItem(0b100, N, data);
+    result res = serializeItem(0b100, N, data);
     for (std::size_t i = 0 ; i < N; i++)
     {
-      addition += to_cbor(d[i], data);
+      res += to_cbor(d[i], data);
+      if (!res)
+      {
+        return res;
+      }
     }
-    return addition;
+    return res;
   }
   template <typename InType, typename Data, size_t N>
   static result deserializer(InType (&d)[N], Data& data)
