@@ -43,6 +43,13 @@ namespace cbor
 {
 using Data = std::vector<DataType>;
 
+std::ostream& operator<< (std::ostream &out, const result& res)
+{
+    std::stringstream ss;
+    ss << "(" << std::boolalpha << res.success << ", " << res.length << ")";
+    return out << ss.str();
+}
+
 namespace detail
 {
 template <>

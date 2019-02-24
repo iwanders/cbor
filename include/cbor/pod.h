@@ -38,6 +38,51 @@
 
 namespace cbor
 {
+struct result
+{
+  bool success { true };
+  std::size_t length { 0 };
+
+  result(){};
+
+  /**
+   * @brief Allow assigning from a non bool into the length.
+   */
+  template <typename T, std::enable_if_t<!std::is_same<bool, T>::value, int> = 0>
+  result(T len)
+  {
+    length = len;
+  }
+
+  /**
+   * @brief If constructed from a bool, set the assign flag.
+   */
+  result(bool is_success)
+  {
+    success = is_success;
+  }
+
+  /**
+   * @brief Addition operator, add lengths, set succes to the AND of both flags.
+   */
+  result operator+(const result& a)
+  {
+    result res;
+    res.success = success && a.success;
+    res.length = length + a.length;
+    return res;
+  }
+
+  explicit operator bool() const
+  {
+    return success;
+  }
+  operator std::size_t() const
+  {
+    return length;
+  }
+};
+
 namespace detail
 {
 template <>

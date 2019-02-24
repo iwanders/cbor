@@ -525,72 +525,52 @@ void test_into_object()
   }
 }
 
-namespace trait_select_test
+void test_result_operators()
 {
-template <typename T, typename T2 = void>
-struct adapter;
+  cbor::result success1 = 5;
+  cbor::result success2 = 5;
+  std::cout << "success1: " << success1 << std::endl;
+  std::cout << "success2: " << success2 << std::endl;
+  cbor::result success21 = (success1 + success2);
+  std::cout << "success(2+1): " << success21 << std::endl;
+  test(success21.success, true);
+  test(success21.length, 10u);
 
-template <typename T>
-struct adapter<T, typename std::enable_if_t<std::is_same<T, bool>::value, void>>
-{
-  const int x = 3;
-};
+  cbor::result fail;
+  std::cout << "failb: " << fail << std::endl;
+  test(fail.success, true);
+  fail = false;
+  std::cout << "set failed: " << fail << std::endl;
+  test(fail.success, false);
+  cbor::result fail_plus_success = (success1 + fail);
+  std::cout << "fail + success1: " << fail_plus_success << std::endl;
+  test(fail_plus_success.success, false);
+  test(fail_plus_success.length, 5u);
 
-template <typename T>
-struct adapter<T, typename std::enable_if_t<std::is_same<T, int>::value, void>>
-{
-  const int x = 5;
-};
+  cbor::result assign_false = false;
+  test(assign_false.success, false);
+  std::cout << "assign_false: " << assign_false << std::endl;
+  
+  test(bool{assign_false}, false);
 
-void test2()
-{  //  type_dispatch z;
-  //  std::cout << type_name<decltype(z.signed_integer)>() << std::endl;
-  //  std::cout << type_name<decltype(z.signed_integer.value)>() << std::endl;
-  adapter<int> f;
-  std::cout << f.x << std::endl;
-  adapter<bool> b;
-  std::cout << b.x << std::endl;
+  cbor::result assign_true = true;
+  std::cout << "assign_true: " << assign_true << std::endl;
+
+  test(bool{assign_true}, true);
+
+  cbor::result assign_one = 1;
+  std::cout << "assign_one: " << assign_one << std::endl;
+  test(assign_one.success, true);
+  test(assign_one.length, 1u);
+  cbor::result assign_zero = 0;
+  std::cout << "assign_zero: " << assign_zero << std::endl;
+  test(assign_zero.success, true);
+  test(assign_zero.length, 0u);
+  std::uint32_t x = assign_one;
+  std::cout << "x: " << x << std::endl;
+  test(x, 1u);
 }
 
-// Make all template arguments const!
-template <typename T>
-using X = typename std::decay<T>::type;
-
-void test()
-{
-  {
-    using A = const unsigned char*;
-    std::cout << "base:" << type_name<A>() << "      " << type_name<X<A>>() << std::endl;
-    using B = const unsigned char*&;
-    std::cout << "base:" << type_name<B>() << "      " << type_name<X<B>>() << std::endl;
-    using C = unsigned char*;
-    std::cout << "base:" << type_name<C>() << "      " << type_name<X<C>>() << std::endl;
-    using D = unsigned char*&;
-    std::cout << "base:" << type_name<D>() << "      " << type_name<X<D>>() << std::endl;
-  }
-
-  std::cout << std::endl;
-  using E = Data;
-  std::cout << "base:" << type_name<E>() << "     " << type_name<X<E>>() << std::endl;
-  using F = Data&;
-  std::cout << "base:" << type_name<F>() << "      " << type_name<X<F>>() << std::endl;
-  using G = const Data&;
-  std::cout << "base:" << type_name<G>() << "      " << type_name<X<G>>() << std::endl;
-  std::cout << std::endl;
-
-  {
-    using A = const unsigned char[3];
-    std::cout << "base:" << type_name<A>() << "      " << type_name<X<A>>() << std::endl;
-    using B = const unsigned char[3];
-    std::cout << "base:" << type_name<B>() << "      " << type_name<X<B>>() << std::endl;
-    using C = unsigned char[3];
-    std::cout << "base:" << type_name<C>() << "      " << type_name<X<C>>() << std::endl;
-    using D = unsigned char[3];
-    std::cout << "base:" << type_name<D>() << "      " << type_name<X<D>>() << std::endl;
-  }
-}
-
-}  // namespace trait_select_test
 
 int main(int /* argc */, char** /* argv */)
 {
@@ -600,7 +580,7 @@ int main(int /* argc */, char** /* argv */)
   test_array();
   test_adl();
   test_into_object();
-  trait_select_test::test();
+  test_result_operators();
 
   return failed;
 }
