@@ -153,15 +153,13 @@ class cbor_object
 {
 public:
   Data serialized_;
-  /**
-   * @brief Function to create a cbor_object that represents the value that was passed in during creation.
-   */
+
+  cbor_object(){};
+
   template <typename T>
-  static cbor_object make(const T& v)
+  cbor_object(const T& v)
   {
-    cbor_object res;
-    serialize(v, res.serialized_);
-    return res;
+    cbor::to_cbor(v, serialized_);
   }
 
   bool operator<(const cbor_object& a) const
@@ -566,6 +564,28 @@ struct traits<cbor_object>
     return res;
   }
 };
+
+template <typename ArrayType>
+struct traits<trait_families::std_array_family, ArrayType>
+{
+  using Type = ArrayType;
+
+  template <typename InType, typename Data, size_t N>
+  static result serializer(const std::array<InType, N>& d, Data& data)
+  {
+    // Let the c style array handle this one.
+    const auto& z = reinterpret_cast<const InType(&)[N]>(d);
+    return to_cbor(z, data);
+  }
+  template <typename InType, typename Data, size_t N>
+  static result deserializer(std::array<InType, N>& d, Data& data)
+  {
+    // Let the c style array handle this one.
+    auto& z = reinterpret_cast<InType(&)[N]>(d);
+    return from_cbor(z, data);
+  }
+};
+
 }  // namespace detail
 
 std::string cbor_object::prettyPrint(std::size_t indent) const
