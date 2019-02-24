@@ -785,7 +785,6 @@ void test_appendix_a()
   //  {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,  17, 18, 19, 20, 21, 22, 23,  24, 25}, false);
 }
 
-
 template <typename Error, typename Fun>
 void expect_error(Fun&& f)
 {
@@ -793,7 +792,8 @@ void expect_error(Fun&& f)
   try
   {
     f();
-  } catch (const Error& e)
+  }
+  catch (const Error& e)
   {
     have_exception = true;
     std::cout << "Caught exception: " << e.what() << std::endl;
@@ -805,42 +805,41 @@ void test_exceptions()
 {
   const bool no_print = false;
 
-  expect_error<cbor::buffer_error>([](){
+  expect_error<cbor::buffer_error>([]() {
     std::string input{ "foo" };
-    Data expected = { 0x63, 0x66, 0x6F};
+    Data expected = { 0x63, 0x66, 0x6F };
     std::string output;
     auto res = cbor::from_cbor(output, expected);
     test(bool(res), false, no_print);
   });
 
-  expect_error<cbor::buffer_error>([](){  // test write buffer too small.
+  expect_error<cbor::buffer_error>([]() {  // test write buffer too small.
     std::array<std::uint8_t, 2> out;
     std::string input{ "foo" };
     auto res = cbor::to_cbor(input, out.data(), out.size());
     test(bool(res), false, no_print);
   });
 
-  expect_error<cbor::buffer_error>([](){  // test write buffer too small.
+  expect_error<cbor::buffer_error>([]() {  // test write buffer too small.
     std::array<std::uint8_t, 2> out;
-    std::vector<std::uint32_t> input{1,2,3};
+    std::vector<std::uint32_t> input{ 1, 2, 3 };
     auto res = cbor::to_cbor(input, out.data(), out.size());
     test(bool(res), false, no_print);
   });
 
-  expect_error<cbor::type_error>([](){ // test reading wrong type.
-    Data cbor_in = { 0x63, 0x66, 0x6F};
+  expect_error<cbor::type_error>([]() {  // test reading wrong type.
+    Data cbor_in = { 0x63, 0x66, 0x6F };
     std::vector<std::uint32_t> parsed;
     auto res = cbor::from_cbor(parsed, cbor_in);
     test(bool(res), false, no_print);
   });
 
-  expect_error<cbor::type_error>([](){  // test fail on size type.
-    Data cbor_in = { 0x19, 0x03, 0xe8};
+  expect_error<cbor::type_error>([]() {  // test fail on size type.
+    Data cbor_in = { 0x19, 0x03, 0xe8 };
     std::uint8_t parsed;
     auto res = cbor::from_cbor(parsed, cbor_in);
     test(bool(res), false, no_print);
   });
-
 }
 
 int main(int /* argc */, char** /* argv */)
@@ -864,7 +863,7 @@ int main(int /* argc */, char** /* argv */)
   else
   {
     std::cerr << "\033[32m"
-              << "Success fully passed " << test_done << " tests." 
+              << "Success fully passed " << test_done << " tests."
               << "\033[0m" << std::endl;
   }
   return failed;

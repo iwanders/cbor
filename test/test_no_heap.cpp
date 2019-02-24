@@ -51,17 +51,17 @@ void* calloc(size_t, size_t)
 void printMemory(std::uint8_t* data, std::size_t len)
 {
   printf("#%lu [", len);
-  for (std::size_t i = 0; i < len ; i++)
+  for (std::size_t i = 0; i < len; i++)
   {
     printf("%d ", data[i]);
   }
   printf("]\n");
 }
 
-int main(int /* argc */, char**  /* argv */)
+int main(int /* argc */, char** /* argv */)
 {
   std::uint8_t cbor_repr[100];
-  std::uint32_t my_vector[3] = {1, 2, 3};
+  std::uint32_t my_vector[3] = { 1, 2, 3 };
   cbor::result res = cbor::to_cbor(my_vector, cbor_repr);
   printf("Result: %d, length: %lu\n", bool(res), std::size_t(res));
   printMemory(cbor_repr, res);

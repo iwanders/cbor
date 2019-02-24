@@ -30,14 +30,13 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
-#include <vector>
 #include <map>
+#include <vector>
 
 // Check if exceptions can be disabled for use on embedded systems.
 #define CBOR_USE_EXCEPTIONS 0
 #include "cbor/cbor.h"
 #include "cbor/stl.h"
-
 
 using Data = std::vector<std::uint8_t>;
 
@@ -85,14 +84,13 @@ void test(const A& a, const B& b, bool print = true)
   }
 }
 
-
 int main(int /* argc */, char** /* argv */)
 {
   const bool no_print = false;
 
-  { // test read buffer too small.
+  {  // test read buffer too small.
     std::string input{ "foo" };
-    Data expected = { 0x63, 0x66, 0x6F};
+    Data expected = { 0x63, 0x66, 0x6F };
     std::string output;
     auto res = cbor::from_cbor(output, expected);
     test(bool(res), false, no_print);
@@ -107,20 +105,20 @@ int main(int /* argc */, char** /* argv */)
 
   {  // test write buffer too small.
     std::array<std::uint8_t, 2> out;
-    std::vector<std::uint32_t> input{1,2,3};
+    std::vector<std::uint32_t> input{ 1, 2, 3 };
     auto res = cbor::to_cbor(input, out.data(), out.size());
     test(bool(res), false, no_print);
   }
 
-  { // test reading wrong type.
-    Data cbor_in = { 0x63, 0x66, 0x6F};
+  {  // test reading wrong type.
+    Data cbor_in = { 0x63, 0x66, 0x6F };
     std::vector<std::uint32_t> parsed;
     auto res = cbor::from_cbor(parsed, cbor_in);
     test(bool(res), false, no_print);
   }
 
   {  // test fail on size type.
-    Data cbor_in = { 0x19, 0x03, 0xe8};
+    Data cbor_in = { 0x19, 0x03, 0xe8 };
     std::uint8_t parsed;
     auto res = cbor::from_cbor(parsed, cbor_in);
     test(bool(res), false, no_print);

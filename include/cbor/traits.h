@@ -103,7 +103,6 @@ using get_read_adapter = read_adapter<typename std::decay<T>::type>;
 template <typename T>
 using get_write_adapter = write_adapter<typename std::decay<T>::type>;
 
-
 // Something to dispatch types to their appropriate trait.
 struct trait_families
 {

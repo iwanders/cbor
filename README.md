@@ -1,7 +1,7 @@
 # cbor
 
 Template-heavy implementation of [concise binary object representation][cbor] as described in [RFC 7049][rfc7049].
-Mainly because the cbor serialization from [Nlohmann's json][nlohmann_json] library was too slow as it uses streams.
+Mainly because the cbor serialization from [Nlohmann's json][nlohmann_json] library was not fast enough for my use case.
 If any type cannot be serialized or deserialized this results in a compile error.
 
 ## Use
@@ -17,11 +17,17 @@ cbor::result result = cbor::to_cbor(input, cbor_repr);
 // Result is implicitly convertible into std::size_t, explicitly into bool.
 // Bool holds whether serialization was successful.
 // The length specifies how many bytes were used for the cbor representation.
+if (result)
+{
+  std::size_t length = result;
+  std::cout << "Length: " << length << std::endl;
+}
 
 // Minimal standard deserialization use case:
 std::vector<int> parsed;
 cbor::result parse_result = cbor::from_cbor(parsed, cbor_repr);
-// By default, this statement may throw if the types encountered in the data don't match the types you are parsing into.
+// By default, this statement may throw if the types encountered in the data
+// don't match the types you are parsing into.
 ```
 There are more examples in the [example.cpp](/test/example.cpp) file. The library can be used without exceptions by
 setting the `CBOR_USE_EXCEPTIONS` define to `0`. It can also be used without the standard library's containers by

@@ -51,15 +51,17 @@ void start()
   {
     using Data = std::vector<std::uint8_t>;
     // Minimal standard serialization use case:
-    std::vector<int> input {1, 50, -10};
+    std::vector<int> input{ 1, 50, -10 };
     Data cbor_repr;
     cbor::result result = cbor::to_cbor(input, cbor_repr);
-    // -- 
-    // result is implicitly convertible into std::size_t, explicitly into bool. Bool holds whether serialization was
-    // successful. The length specifies how many bytes were used for the cbor representation.
+    // --
+    // Result is implicitly convertible into std::size_t, explicitly into bool.
+    // Bool holds whether serialization was successful.
+    // The length specifies how many bytes were used for the cbor representation.
     if (result)
     {
-      std::cout << "Succesfully serialized: " << printData(input) << std::endl;
+      std::size_t length = result;
+      std::cout << "Length: " << length << std::endl;
     }
     std::size_t cbor_length = result;
     std::cout << "Serialization result: " << bool(result) << " length: " << cbor_length << std::endl;
@@ -68,8 +70,9 @@ void start()
     // Minimal standard deserialization use case:
     std::vector<int> parsed;
     cbor::result parse_result = cbor::from_cbor(parsed, cbor_repr);
-    // By default, this statement may throw if the types encountered in the data don't match the types you are parsing into.
-    // -- 
+    // By default, this statement may throw if the types encountered in the data don't match the types you are parsing
+    // into.
+    // --
     // Bool holds whether deserialization was successful. Length how many bytes were read from the input.
     if (parse_result)
     {
@@ -86,9 +89,9 @@ void start()
     using Data = std::vector<std::uint8_t>;
     // STL containers can be nested without problems:
     std::map<std::string, std::vector<int>> input;
-    input["foo"] = {500, -1500};
-    input["bar"] = {1, 2, 3};
-    input["buz"] = {15000000};
+    input["foo"] = { 500, -1500 };
+    input["bar"] = { 1, 2, 3 };
+    input["buz"] = { 15000000 };
     std::cout << "Input: " << std::endl;
     std::cout << "foo: " << printData(input.at("foo")) << std::endl;
     std::cout << "bar: " << printData(input.at("bar")) << std::endl;
@@ -105,7 +108,7 @@ void start()
     //--
     std::map<std::string, std::vector<int>> parsed;
     cbor::result parse_result = cbor::from_cbor(parsed, cbor_repr);
-    // -- 
+    // --
     if (parse_result)
     {
       std::cout << "Succesfully parsed: " << printData(cbor_repr) << std::endl;
@@ -121,11 +124,11 @@ void start()
 
   {
     // Serialization and deserialization can be done to a pointer with a maximum size:
-    std::vector<int> input {1, 50, -10};
+    std::vector<int> input{ 1, 50, -10 };
     std::array<std::uint8_t, 7> cbor_repr;
     cbor::result result = cbor::to_cbor(input, cbor_repr.data(), cbor_repr.size());
     std::cout << "Serialization result: " << result << std::endl;
-    //-- 
+    //--
     std::vector<int> parsed;
     cbor::result parse_result = cbor::from_cbor(parsed, cbor_repr.data(), cbor_repr.size());
     std::cout << "Deserialization result: " << parse_result << std::endl;
@@ -139,8 +142,8 @@ void start()
     // for non homogeneous data one can serialize and deserialize to a cbor_object.
     std::vector<cbor::cbor_object> input;
     input.push_back(2);
-    input.push_back(std::vector<int>{1,2,3});
-    input.push_back(std::string{"Foo"});
+    input.push_back(std::vector<int>{ 1, 2, 3 });
+    input.push_back(std::string{ "Foo" });
     Data cbor_repr;
     cbor::result result = cbor::to_cbor(input, cbor_repr);
     std::cout << "Serialization result: " << result << std::endl;
@@ -159,9 +162,9 @@ void start()
   std::cout << std::endl << std::endl;
   {
     std::map<std::string, std::vector<int>> input;
-    input["foo"] = {500, -1500};
-    input["bar"] = {1, 2, 3};
-    input["buz"] = {15000000};
+    input["foo"] = { 500, -1500 };
+    input["bar"] = { 1, 2, 3 };
+    input["buz"] = { 15000000 };
 
     // The cbor::cbor_object can also be used to serialize into.
     cbor::cbor_object cbor_repr;
@@ -180,7 +183,7 @@ struct Buz
   std::uint32_t x;
   std::string toString() const
   {
-    return std::string{"<Buz "} + std::to_string(f) + ", " + std::to_string(x) + ">";
+    return std::string{ "<Buz " } + std::to_string(f) + ", " + std::to_string(x) + ">";
   }
 };
 
@@ -203,18 +206,18 @@ cbor::result from_cbor(Buz& b, Data& data)
   representation.at("x").get_to(b.x);
   return res;
 }
-} // namespace my_namespace
+}  // namespace my_namespace
 
 void custom_type()
 {
   std::vector<my_namespace::Buz> input = { my_namespace::Buz{ 2, 5 }, my_namespace::Buz{ 3, 6 },
-                                            my_namespace::Buz{ 4, 7 } };
+                                           my_namespace::Buz{ 4, 7 } };
   cbor::cbor_object cbor_representation;
   cbor::result res = cbor::to_cbor(input, cbor_representation);
   std::cout << "Serialization result: " << res << std::endl;
   std::cout << "Cbor representation: " << std::endl;
   std::cout << cbor_representation.prettyPrint() << std::endl;
-  
+
   std::vector<my_namespace::Buz> output;
   res = cbor::from_cbor(output, cbor_representation);
   std::cout << "Deserialization result: " << res << std::endl;
@@ -223,7 +226,6 @@ void custom_type()
     std::cout << entry.toString() << std::endl;
   }
 }
-
 
 int main(int /* argc */, char** /* argv */)
 {
