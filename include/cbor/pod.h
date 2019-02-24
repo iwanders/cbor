@@ -59,7 +59,8 @@ struct result
   /**
    * @brief If constructed from a bool, set the assign flag.
    */
-  result(bool is_success)
+  template <typename T, std::enable_if_t<std::is_same<bool, T>::value, int> = 0>
+  result(T is_success)
   {
     success = is_success;
   }
@@ -68,7 +69,7 @@ struct result
    * @brief Addition operator, add lengths, set succes to the AND of both flags.
    */
   // This function is disabled for integral types to implicitly convert those first.
-  template <typename T, std::enable_if_t<!std::is_integral<T>::value, int> = 0>
+  template <typename T, std::enable_if_t<(std::is_same<T, result>::value), int> = 0>
   result operator+(const T& a)
   {
     result res;
@@ -76,11 +77,28 @@ struct result
     res.length = length + a.length;
     return res;
   }
-
-  template <typename T>
-  result& operator+=(const T& a)
+  // This function is enabled if the right hand side is not a result type and not a boolean.
+  template <typename T, std::enable_if_t<(!std::is_same<T, result>::value && !std::is_same<bool, T>::value), int> = 0>
+  result operator+(const T& a)
   {
-    result z = *this + result(a);
+    result res;
+    res.success = success;
+    res.length = length + a;
+    return res;
+  }
+  // This function is enabled if the right hand side is not a result type but a boolean.
+  template <typename T, std::enable_if_t<(!std::is_same<T, result>::value && std::is_same<bool, T>::value), int> = 0>
+  result operator+(const T& a)
+  {
+    result res;
+    res.success = success && a;
+    res.length = length;
+    return res;
+  }
+
+  result& operator+=(const result& a)
+  {
+    result z = *this + a;
     success = z.success;
     length = z.length;
     return *this;
@@ -123,7 +141,7 @@ struct write_adapter<DataType*> : std::true_type
 
   result resize(std::uint32_t value)
   {
-    if (value >= max_length)
+    if (value > max_length)
     {
       CBOR_BUFFER_ERROR("Resize failed: " + std::to_string(value) +
                         " exceed max length: " + std::to_string(max_length));
@@ -375,7 +393,7 @@ static result deserializeInteger(std::uint8_t major_type, Type& v, Data& data)
   {
     if (res > std::numeric_limits<Type>::max())
     {
-      CBOR_TYPE_ERROR("Deserialized value" + std::to_string(res) + " does not fit in " + typeid(Type).name())
+      CBOR_TYPE_ERROR("Deserialized value " + std::to_string(res) + " does not fit in " + typeid(Type).name())
       return false;
     }
     else

@@ -47,7 +47,7 @@ using Data = std::vector<DataType>;
 std::ostream& operator<<(std::ostream& out, const result& res)
 {
   std::stringstream ss;
-  ss << "(" << std::boolalpha << res.success << ", " << res.length << ")";
+  ss << "(success: " << std::boolalpha << res.success << ", length: " << res.length << ")";
   return out << ss.str();
 }
 
@@ -181,6 +181,11 @@ public:
     return serialized_ < a.serialized_;
   }
 
+  const Data& serialized() const
+  {
+    return serialized_;
+  }
+
   std::string prettyPrint(std::size_t indent = 0) const;
 };
 
@@ -237,7 +242,10 @@ struct traits<std::string>
     v.clear();
     std::size_t offset = data.position();
     res += data.advance(string_length);  // advance before reading.
-    v.insert(v.begin(), &(data[offset]), &(data[offset]) + string_length);
+    if (res)
+    {
+      v.insert(v.begin(), &(data[offset]), &(data[offset]) + string_length);
+    }
     return res;
   }
 };
@@ -598,6 +606,26 @@ struct traits<trait_families::std_array_family, ArrayType>
     auto& z = reinterpret_cast<InType(&)[N]>(d);
     return from_cbor(z, data);
   }
+};
+
+// helper to identify std::array types.
+template <typename Type>
+struct is_std_array : std::false_type
+{
+};
+
+template <typename Item, std::size_t N>
+struct is_std_array<std::array<Item, N> > : std::true_type
+{
+};
+
+template <typename T>
+struct trait_selector<trait_families::std_array_family::value, T>  // std::array<int, 5;
+{
+  using Type = T;
+  using Family = trait_families::std_array_family;
+  using Trait = detail::traits<trait_families::std_array_family, T>;
+  static const bool applies = is_std_array<T>::value;
 };
 
 }  // namespace detail

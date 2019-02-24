@@ -32,7 +32,6 @@
 #include <iostream>
 #include <vector>
 //  #define CBOR_USE_EXCEPTIONS 0
-#include "cbor/cbor.h"
 #include "cbor/stl.h"
 
 #include <cxxabi.h>
@@ -85,10 +84,12 @@ std::ostream& operator<<(std::ostream& os, const std::map<K, V>& t)
 }
 
 bool failed = false;
+std::size_t test_done = 0;
 
 template <typename A, typename B>
 void test(const A& a, const B& b, bool print = true)
 {
+  test_done++;
   if (a != b)
   {
     std::cerr << "\033[31m"
@@ -490,8 +491,9 @@ struct Bar
   std::uint32_t x;
 };
 
-template <typename... Data>
-cbor::result to_cbor(const Bar& b, cbor::detail::write_adapter<Data...>& data)
+// using arrays.
+template <typename Data>
+cbor::result to_cbor(const Bar& b, Data& data)
 {
   std::array<cbor::cbor_object, 2> z;
   z[0] = b.f;
@@ -499,8 +501,8 @@ cbor::result to_cbor(const Bar& b, cbor::detail::write_adapter<Data...>& data)
   return to_cbor(z, data);
 }
 
-template <typename... Data>
-cbor::result from_cbor(Bar& b, cbor::detail::read_adapter<Data...>& data)
+template <typename Data>
+cbor::result from_cbor(Bar& b, Data& data)
 {
   std::array<cbor::cbor_object, 2> z;
   auto res = from_cbor(z, data);
@@ -518,8 +520,10 @@ struct Buz
   std::uint32_t f;
   std::uint32_t x;
 };
-template <typename... Data>
-cbor::result to_cbor(const Buz& b, cbor::detail::write_adapter<Data...>& data)
+
+// using a map
+template <typename Data>
+cbor::result to_cbor(const Buz& b, Data& data)
 {
   std::map<std::string, cbor::cbor_object> representation;
   representation["f"] = b.f;
@@ -527,8 +531,8 @@ cbor::result to_cbor(const Buz& b, cbor::detail::write_adapter<Data...>& data)
   return to_cbor(representation, data);
 }
 
-template <typename... Data>
-cbor::result from_cbor(Buz& b, cbor::detail::read_adapter<Data...>& data)
+template <typename Data>
+cbor::result from_cbor(Buz& b, Data& data)
 {
   std::map<std::string, cbor::cbor_object> representation;
   auto res = from_cbor(representation, data);
@@ -541,6 +545,7 @@ cbor::result from_cbor(Buz& b, cbor::detail::read_adapter<Data...>& data)
 
 void test_compound_type()
 {
+  const bool print_compare = false;
   {
     compound_type::Bar input{ 2, 3 };
     Data expected = { 0x82, 0x02, 0x03 };
@@ -559,15 +564,15 @@ void test_compound_type()
     std::vector<compound_type::Bar> output;
     res = cbor::from_cbor(output, cbor_representation);
     test_result(res, cbor_representation);
-    test(output.size(), 3u);
+    test(output.size(), 3u, print_compare);
     if (output.size() == 3)
     {
-      test(output[0].f, 2u);
-      test(output[0].x, 5u);
-      test(output[1].f, 3u);
-      test(output[1].x, 6u);
-      test(output[2].f, 4u);
-      test(output[2].x, 7u);
+      test(output[0].f, 2u, print_compare);
+      test(output[0].x, 5u, print_compare);
+      test(output[1].f, 3u, print_compare);
+      test(output[1].x, 6u, print_compare);
+      test(output[2].f, 4u, print_compare);
+      test(output[2].x, 7u, print_compare);
     }
   }
   {
@@ -582,28 +587,28 @@ void test_compound_type()
     {
       std::vector<cbor::cbor_object> output;
       res = cbor::from_cbor(output, cbor_representation);
-      test(output.size(), 3u);
+      test(output.size(), 3u, print_compare);
       compound_type::Buz zz;
       cbor::from_cbor(zz, output[0]);
-      test(zz.f, 2u);
-      test(zz.x, 5u);
+      test(zz.f, 2u, print_compare);
+      test(zz.x, 5u, print_compare);
       cbor::from_cbor(zz, output[2]);
-      test(zz.f, 4u);
-      test(zz.x, 7u);
+      test(zz.f, 4u, print_compare);
+      test(zz.x, 7u, print_compare);
     }
 
     std::vector<compound_type::Buz> output;
     res = cbor::from_cbor(output, cbor_representation);
     test_result(res, cbor_representation);
-    test(output.size(), 3u);
+    test(output.size(), 3u, print_compare);
     if (output.size() == 3)
     {
-      test(output[0].f, 2u);
-      test(output[0].x, 5u);
-      test(output[1].f, 3u);
-      test(output[1].x, 6u);
-      test(output[2].f, 4u);
-      test(output[2].x, 7u);
+      test(output[0].f, 2u, print_compare);
+      test(output[0].x, 5u, print_compare);
+      test(output[1].f, 3u, print_compare);
+      test(output[1].x, 6u, print_compare);
+      test(output[2].f, 4u, print_compare);
+      test(output[2].x, 7u, print_compare);
     }
   }
 }
@@ -660,6 +665,18 @@ void test_result_operators()
   test(int_addition.length, 5u);
   int_addition += 5;
   test(int_addition.length, 10u);
+
+  cbor::result false_res = false;
+  false_res += 5;
+  std::cout << "false_res plus 5:" << false_res << std::endl;
+  test(false_res.success, false);
+  test(false_res.length, 5u);
+
+  cbor::result test_result = 2;
+  test_result += false_res;
+  cbor::result new_res = test_result + 5;
+  test(new_res.success, false);
+  test(new_res.length, 12u);
 }
 
 template <typename Type>
@@ -768,6 +785,64 @@ void test_appendix_a()
   //  {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,  17, 18, 19, 20, 21, 22, 23,  24, 25}, false);
 }
 
+
+template <typename Error, typename Fun>
+void expect_error(Fun&& f)
+{
+  bool have_exception = false;
+  try
+  {
+    f();
+  } catch (const Error& e)
+  {
+    have_exception = true;
+    std::cout << "Caught exception: " << e.what() << std::endl;
+  }
+  test(have_exception, true, false);
+}
+
+void test_exceptions()
+{
+  const bool no_print = false;
+
+  expect_error<cbor::buffer_error>([](){
+    std::string input{ "foo" };
+    Data expected = { 0x63, 0x66, 0x6F};
+    std::string output;
+    auto res = cbor::from_cbor(output, expected);
+    test(bool(res), false, no_print);
+  });
+
+  expect_error<cbor::buffer_error>([](){  // test write buffer too small.
+    std::array<std::uint8_t, 2> out;
+    std::string input{ "foo" };
+    auto res = cbor::to_cbor(input, out.data(), out.size());
+    test(bool(res), false, no_print);
+  });
+
+  expect_error<cbor::buffer_error>([](){  // test write buffer too small.
+    std::array<std::uint8_t, 2> out;
+    std::vector<std::uint32_t> input{1,2,3};
+    auto res = cbor::to_cbor(input, out.data(), out.size());
+    test(bool(res), false, no_print);
+  });
+
+  expect_error<cbor::type_error>([](){ // test reading wrong type.
+    Data cbor_in = { 0x63, 0x66, 0x6F};
+    std::vector<std::uint32_t> parsed;
+    auto res = cbor::from_cbor(parsed, cbor_in);
+    test(bool(res), false, no_print);
+  });
+
+  expect_error<cbor::type_error>([](){  // test fail on size type.
+    Data cbor_in = { 0x19, 0x03, 0xe8};
+    std::uint8_t parsed;
+    auto res = cbor::from_cbor(parsed, cbor_in);
+    test(bool(res), false, no_print);
+  });
+
+}
+
 int main(int /* argc */, char** /* argv */)
 {
   test_pod();
@@ -776,8 +851,9 @@ int main(int /* argc */, char** /* argv */)
   test_adl();
   test_into_object();
   test_compound_type();
-  //  test_result_operators();
-  //  test_appendix_a();
+  test_result_operators();
+  test_appendix_a();
+  test_exceptions();
 
   if (failed)
   {
@@ -788,7 +864,7 @@ int main(int /* argc */, char** /* argv */)
   else
   {
     std::cerr << "\033[32m"
-              << "Success"
+              << "Success fully passed " << test_done << " tests." 
               << "\033[0m" << std::endl;
   }
   return failed;

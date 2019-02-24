@@ -103,16 +103,6 @@ using get_read_adapter = read_adapter<typename std::decay<T>::type>;
 template <typename T>
 using get_write_adapter = write_adapter<typename std::decay<T>::type>;
 
-// helper to identify std::array types.
-template <typename Type>
-struct is_std_array : std::false_type
-{
-};
-
-template <typename Item, std::size_t N>
-struct is_std_array<std::array<Item, N> > : std::true_type
-{
-};
 
 // Something to dispatch types to their appropriate trait.
 struct trait_families
@@ -181,15 +171,6 @@ struct trait_selector<trait_families::c_array_family::value, T>  // any c style 
   using Family = trait_families::c_array_family;
   using Trait = detail::traits<trait_families::c_array_family, T>;
   static const bool applies = std::is_array<T>::value;
-};
-
-template <typename T>
-struct trait_selector<trait_families::std_array_family::value, T>  // std::array<int, 5;
-{
-  using Type = T;
-  using Family = trait_families::std_array_family;
-  using Trait = detail::traits<trait_families::std_array_family, T>;
-  static const bool applies = is_std_array<T>::value;
 };
 
 // Recursively calling templated class to find the approprpiate family, or fall through.
