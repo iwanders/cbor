@@ -65,6 +65,10 @@ struct write_adapter<Data> : std::true_type
   }
   DataType& operator[](std::size_t pos)
   {
+    if (pos >= data.size())
+    {
+      // todo; throw?
+    }
     return data[pos];
   }
 };

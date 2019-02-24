@@ -31,6 +31,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <utility>
 #include "pod.h"
 #include "traits.h"
 #include "util.h"
