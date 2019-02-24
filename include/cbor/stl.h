@@ -283,9 +283,14 @@ struct traits<std::vector<T>>
       // it is a list.
       if ((first_byte & 0b11111) == 31)
       {
-        // todo indefinite length...
-        CBOR_PARSE_ERROR("Unhandled indefinite length");
-        return false;
+        while (data[data.position()] != 255)
+        {
+          typename Type::value_type tmp;
+          res += from_cbor(tmp, data);
+          v.emplace_back(std::move(tmp));
+        }
+        res += data.advance(1); // pop the break byte.
+        return res;
       }
       else
       {
@@ -464,9 +469,16 @@ struct traits<std::map<KeyType, ValueType>>
       // it is a map!
       if ((first_byte & 0b11111) == 31)
       {
-        // todo indefinite length...
-        CBOR_PARSE_ERROR("Unhandled indefinite length");
-        return false;
+        while (data[data.position()] != 255)
+        {
+          typename Type::key_type key;
+          typename Type::mapped_type value;
+          res += from_cbor(key, data);
+          res += from_cbor(value, data);
+          v.emplace(std::move(key), std::move(value));
+        }
+        res += data.advance(1); // pop the break byte.
+        return res;
       }
       else
       {
@@ -525,6 +537,7 @@ struct traits<cbor_object>
     std::uint8_t major_type = first_byte >> 5;
 
     auto copy_to_object = [&v, &data](std::size_t start, std::size_t length) {
+      v.serialized_.reserve(v.serialized_.size() + length);
       for (std::size_t i = start; i < (start + length); i++)
       {
         v.serialized_.emplace_back(data[i]);
@@ -543,7 +556,14 @@ struct traits<cbor_object>
       // array.
       if (first_byte == ((0b100 << 5) | 31))
       {
-        // Todo handle indefinite.
+        copy_to_object(start_pos, res);
+        while(data[data.position()] != 255)
+        {
+          res += deserializer(v, data);
+        }
+        copy_to_object(data.position(), 1);
+        res += data.advance(1); // remove the break.
+        return res;
       }
       // copy the start byte.
       copy_to_object(start_pos, res);
@@ -555,10 +575,18 @@ struct traits<cbor_object>
 
     if (major_type == 0b101)
     {
-      // array.
+      // map.
       if (first_byte == ((0b101 << 5) | 31))
       {
-        // Todo handle indefinite.
+        copy_to_object(start_pos, res);
+        while(data[data.position()] != 255)
+        {
+          res += deserializer(v, data);
+        res += deserializer(v, data);
+        }
+        copy_to_object(data.position(), 1);
+        res += data.advance(1); // remove the break.
+        return res;
       }
       // copy the start...
       copy_to_object(start_pos, res);

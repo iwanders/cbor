@@ -50,16 +50,16 @@ Supported types plain old data types:
 - `d[N]`: Any C style array is serialized as a cbor array of `N` long.
 
 Supported STL containers:
-- `std::vector`: Serialized into cbor array.
-- `std::map`: Serialized into cbor map.
+- `std::vector`: Serialized into fixed length cbor array, deserialization of indefinite array supported.
+- `std::map`: Serialized into fixed length cbor map, deserialization of indefinite map supported.
 - `std::pair`: Serialized into cbor array of two long.
 - `std::tuple`: Serialized into cbor array equal to the tuple length.
-- `std::array`: Handled as `d[N]`
-- `std::string`: Handled as `const char*`
+- `std::array`: Handled as `d[N]`.
+- `std::string`: Handled as `const char*`.
 
 Supported CBOR types:
-- `map`, definite length only.
-- `array`, definite length only.
+- `map`, indefinite length supported for `std::map`.
+- `array`, indefinite length supported for `std::vector`.
 - `signed integer`
 - `unsigned integer`
 - `double` and `float`. The 16 bit `short float` is not supported.

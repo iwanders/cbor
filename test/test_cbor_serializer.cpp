@@ -481,6 +481,28 @@ void test_into_object()
     test(cbor::hexdump(cbor_res.serialized_), cbor::hexdump(cbor_data));
     std::cout << cbor_res.prettyPrint() << std::endl;
   }
+
+  {
+    // test copying indefinite array into object.
+    Data input = { 0x9F, 0x04, 0x05, 0xFF };
+    cbor::cbor_object cbor_representation;
+    auto res = cbor::from_cbor(cbor_representation, input);
+    test_result(res, cbor_representation.serialized_, input);
+  }
+  {
+    // test copying indefinite array into object.
+    Data input = { 0x9F, 0x04, 0x05, 0xFF };
+    cbor::cbor_object cbor_representation;
+    auto res = cbor::from_cbor(cbor_representation, input);
+    test_result(res, cbor_representation.serialized_, input);
+  }
+  {
+    // test copying indefinite map into object.bf61626163ff
+    Data input = { 0xBF, 0x61, 0x62, 0x61, 0x63, 0xFF };
+    cbor::cbor_object cbor_representation;
+    auto res = cbor::from_cbor(cbor_representation, input);
+    test_result(res, cbor_representation.serialized_, input);
+  }
 }
 
 namespace compound_type
@@ -780,9 +802,16 @@ void test_appendix_a()
 
   // Indefinite lengths
   //  test_appendix_A_decode<std::string>("7f657374726561646d696e67ff", "streaming", false);
-  //  test_appendix_A_decode<std::vector<std::uint32_t>>("9fff", {}, false);
-  //  test_appendix_A_decode<std::vector<std::uint32_t>>("9f0102030405060708090a0b0c0d0e0f101112131415161718181819ff",
-  //  {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,  17, 18, 19, 20, 21, 22, 23,  24, 25}, false);
+  test_appendix_A_decode<std::vector<std::uint32_t>>("9fff", {}, false);
+  test_appendix_A_decode<std::vector<std::uint32_t>>("9f0102030405060708090a0b0c0d0e0f101112131415161718181819ff",
+  {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,  17, 18, 19, 20, 21, 22, 23,  24, 25}, false);
+
+  // adapted from 0x9f018202039f0405ffff
+  test_appendix_A_decode<std::vector<std::uint32_t>>("9f0405ff", {4, 5}, false);
+
+  // adapted from 0x826161bf61626163ff
+  test_appendix_A_decode<std::map<std::string, std::string>>("bf61626163ff", {{"b", "c"}}, false);
+
 }
 
 template <typename Error, typename Fun>

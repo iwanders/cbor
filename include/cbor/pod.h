@@ -376,8 +376,9 @@ result deserializeItem(std::uint8_t& first_byte, std::uint64_t& v, Data& data)
   }
   else if (direct == 31)
   {
-    CBOR_PARSE_ERROR("Unhandled direct value");
-    return false;
+    // indefinite length entry.
+    v = direct;
+    return data.advance(1);
   }
   return false;
 }
