@@ -35,6 +35,7 @@
 #include "cbor.h"
 #include "traits.h"
 #include "util.h"
+#include "exceptions.h"
 
 namespace cbor
 {
@@ -48,6 +49,7 @@ struct result
   /**
    * @brief Allow assigning from a non bool into the length.
    */
+  // This function is disabled for bool types to get the other constructor to set the success flag.
   template <typename T, std::enable_if_t<!std::is_same<bool, T>::value, int> = 0>
   result(T len)
   {
@@ -65,7 +67,9 @@ struct result
   /**
    * @brief Addition operator, add lengths, set succes to the AND of both flags.
    */
-  result operator+(const result& a)
+  // This function is disabled for integral types to implicitly convert those first.
+  template <typename T, std::enable_if_t<!std::is_integral<T>::value, int> = 0>
+  result operator+(const T& a)
   {
     result res;
     res.success = success && a.success;
@@ -73,6 +77,14 @@ struct result
     return res;
   }
 
+  template <typename T>
+  result& operator+=(const T& a)
+  {
+    result z = *this + result(a);
+    success = z.success;
+    length = z.length;
+    return *this;
+  }
   explicit operator bool() const
   {
     return success;
@@ -109,16 +121,29 @@ struct write_adapter<DataType*> : std::true_type
   {
   }
 
-  void resize(std::uint32_t value)
+  result resize(std::uint32_t value)
   {
+    if (value >= max_length)
+    {
+      CBOR_BUFFER_ERROR("Resize failed: " + std::to_string(value) + " exceed max length: " + std::to_string(max_length));
+      return false;
+    }
     used_size = value;
+    return true;
   }
+
   std::uint32_t size() const
   {
     return used_size;
   }
+
   DataType& operator[](std::size_t pos)
   {
+    if (pos > max_length)
+    {
+      CBOR_BUFFER_ERROR("Write failed: " + std::to_string(pos) + " exceed max length: " + std::to_string(max_length));
+      return data[max_length - 1];
+    }
     return data[pos];
   }
 };
@@ -149,13 +174,15 @@ struct read_adapter<DataType*> : std::true_type
   {
     return cursor;
   }
-  void advance(std::size_t count)
+  result advance(std::size_t count)
   {
     cursor += count;
-    if (cursor >= max_length)
+    if (cursor > max_length)
     {
-      // Throw!?
+      CBOR_BUFFER_ERROR("Advance failed: " + std::to_string(cursor) + " exceed max length: " + std::to_string(max_length));
+      return false;
     }
+    return count;
   }
   std::size_t size() const
   {
@@ -163,9 +190,10 @@ struct read_adapter<DataType*> : std::true_type
   }
   const DataType& operator[](std::size_t pos) const
   {
-    if (pos >= max_length)
+    if (pos > max_length)
     {
-      // Throw!?
+      CBOR_BUFFER_ERROR("Read failed: " + std::to_string(pos) + " exceed max length: " + std::to_string(max_length));
+      return data[max_length - 1];
     }
     return data[pos];
   }
@@ -179,150 +207,146 @@ struct read_adapter<const DataType*> : read_adapter<DataType*>
  * @brief Function to write a 8 bit unsigned int in its shortest form given the major type.
  */
 template <typename Data>
-std::size_t serializeItem(const std::uint8_t major_type, const std::uint8_t v, Data& data)
+result serializeItem(const std::uint8_t major_type, const std::uint8_t v, Data& data)
 {
   if (v <= 23)
   {
     const std::size_t offset = data.size();
-    data.resize(data.size() + 1);
+    result res = data.resize(data.size() + 1);
     data[offset] = std::uint8_t(major_type << 5) | v;
-    return 1;
+    return res + 1;
   }
   else
   {
     const std::size_t offset = data.size();
-    data.resize(offset + 2);
+    result res = data.resize(offset + 2);
     data[offset] = std::uint8_t(major_type << 5) | 24;
     data[offset + 1] = v;
-    return 2;
+    return res + 2;
   }
 }
 
 template <typename Data>
-std::size_t serializePrimitive(const std::uint8_t primitive, Data& data)
+result serializePrimitive(const std::uint8_t primitive, Data& data)
 {
   const std::size_t offset = data.size();
-  data.resize(data.size() + 1);
+  result res = data.resize(data.size() + 1);
   data[offset] = primitive;
-  return 1;
+  return res + 1;
 }
 template <typename Data>
-std::size_t deserializePrimitive(std::uint8_t& primitive, Data& data)
+result deserializePrimitive(std::uint8_t& primitive, Data& data)
 {
   primitive = data[data.position()];
-  data.advance(1);
-  return 1;
+  return data.advance(1);
 }
 
 /**
  * @brief Function to write a 16 bit unsigned int in its shortest form given the major type.
  */
 template <typename Data>
-std::size_t serializeItem(const std::uint8_t major_type, const std::uint16_t v, Data& data)
+result serializeItem(const std::uint8_t major_type, const std::uint16_t v, Data& data)
 {
   if (v <= std::numeric_limits<std::uint8_t>::max())
   {
     return serializeItem(major_type, static_cast<std::uint8_t>(v), data);
   }
   const std::size_t offset = data.size();
-  data.resize(offset + 2 + 1);
+  result res = data.resize(offset + 2 + 1);
   data[offset] = std::uint8_t(major_type << 5) | 25;
   auto fixed = fixEndianness(v);
   *reinterpret_cast<std::uint16_t*>(&(data[offset + 1])) = fixed;
-  return 3;
+  return res + 3;
 }
 
 /**
  * @brief Function to write a 32 bit unsigned int in its shortest form given the major type.
  */
 template <typename Data>
-std::size_t serializeItem(const std::uint8_t major_type, const std::uint32_t v, Data& data)
+result serializeItem(const std::uint8_t major_type, const std::uint32_t v, Data& data)
 {
   if (v <= std::numeric_limits<std::uint16_t>::max())
   {
     return serializeItem(major_type, static_cast<std::uint16_t>(v), data);
   }
   const std::size_t offset = data.size();
-  data.resize(offset + 4 + 1);
+  result res = data.resize(offset + 4 + 1);
   auto fixed = fixEndianness(v);
   data[offset] = std::uint8_t(major_type << 5) | 26;
   *reinterpret_cast<std::uint32_t*>(&(data[offset + 1])) = fixed;
-  return 5;
+  return res + 5;
 }
 
 /**
  * @brief Function to write a 64 bit unsigned int in its shortest form given the major type.
  */
 template <typename Data>
-std::size_t serializeItem(const std::uint8_t major_type, const std::uint64_t v, Data& data)
+result serializeItem(const std::uint8_t major_type, const std::uint64_t v, Data& data)
 {
   if (v <= std::numeric_limits<std::uint32_t>::max())
   {
     return serializeItem(major_type, static_cast<std::uint32_t>(v), data);
   }
   const std::size_t offset = data.size();
-  data.resize(offset + 8 + 1);
+  result res = data.resize(offset + 8 + 1);
   data[offset] = std::uint8_t(major_type << 5) | 27;
   auto fixed = fixEndianness(v);
   *reinterpret_cast<std::uint64_t*>(&(data[offset + 1])) = fixed;
-  return 9;
+  return res + 9;
 }
 
 template <typename Data>
-std::size_t deserializeItem(std::uint8_t& first_byte, std::uint64_t& v, Data& data)
+result deserializeItem(std::uint8_t& first_byte, std::uint64_t& v, Data& data)
 {
   first_byte = data[data.position()];
   std::uint8_t direct = data[data.position()] & 0b11111;
   if (direct < 24)
   {
     v = direct;
-    data.advance(1);
-    return 1;
+    return data.advance(1);
   }
   else if (direct == 24)  // uint8_t case
   {
     v = data[data.position() + 1];
-    data.advance(2);
-    return 2;
+    return data.advance(2);
   }
   else if (direct == 25)  // uint16_t case
   {
     const std::uint16_t intermediate = *reinterpret_cast<const std::uint16_t*>(&(data[data.position() + 1]));
     v = fixEndianness(intermediate);
-    data.advance(3);
-    return 3;
+    return data.advance(3);
   }
   else if (direct == 26)
   {
     const std::uint32_t intermediate = *reinterpret_cast<const std::uint32_t*>(&(data[data.position() + 1]));
     v = fixEndianness(intermediate);
-    data.advance(5);
-    return 5;
+    return data.advance(5);
   }
   else if (direct == 27)
   {
     const std::uint64_t intermediate = *reinterpret_cast<const std::uint64_t*>(&(data[data.position() + 1]));
     v = fixEndianness(intermediate);
-    data.advance(9);
-    return 9;
+    return data.advance(9);
   }
   else if (direct == 31)
   {
   }
-  return 0;
+  return false;
 }
 
 template <typename Type, typename Data>
-static std::size_t deserializeInteger(std::uint8_t major_type, Type& v, Data& data)
+static result deserializeInteger(std::uint8_t major_type, Type& v, Data& data)
 {
   std::uint8_t first = 0;
   std::uint64_t res;
-  std::size_t advanced = deserializeItem(first, res, data);
-  if ((first >> 5) == major_type)
+  result advanced = deserializeItem(first, res, data);
+  std::uint8_t read_major_type = first >> 5;
+  if (read_major_type == major_type)
   {
     if (res > std::numeric_limits<Type>::max())
     {
-      // Todo: Size error!?
+      CBOR_TYPE_ERROR("Deserialized value" + std::to_string(res) + " does not fit in " + typeid(Type).name())
+      return false;
     }
     else
     {
@@ -332,22 +356,26 @@ static std::size_t deserializeInteger(std::uint8_t major_type, Type& v, Data& da
   }
   else
   {
-    // @todo; panic
+    CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type " +
+                    std::to_string(major_type));
+    return false;
   }
   return 0;
 }
 
 template <typename Type, typename Data>
-static std::size_t deserializeSignedInteger(Type& v, Data& data)
+static result deserializeSignedInteger(Type& v, Data& data)
 {
   std::uint8_t first = 0;
   std::uint64_t res;
-  std::size_t advanced = deserializeItem(first, res, data);
-  if ((first >> 5) == 0b000)
+  result advanced = deserializeItem(first, res, data);
+  std::uint8_t read_major_type = first >> 5;
+  if (read_major_type == 0b000)
   {
     if (res > std::numeric_limits<Type>::max())
     {
-      // Todo: Size error!?
+      CBOR_TYPE_ERROR("Deserialized value" + std::to_string(res) + " does not fit in " + typeid(Type).name())
+      return false;
     }
     else
     {
@@ -355,12 +383,13 @@ static std::size_t deserializeSignedInteger(Type& v, Data& data)
       return advanced;
     }
   }
-  else if ((first >> 5) == 0b001)
+  else if (read_major_type == 0b001)
   {
     std::int64_t signedres = -(res + 1);
     if (signedres < std::numeric_limits<Type>::min())
     {
-      // Todo: Size error!?
+      CBOR_TYPE_ERROR("Deserialized value" + std::to_string(res) + " does not fit in " + typeid(Type).name())
+      return false;
     }
     else
     {
@@ -370,9 +399,10 @@ static std::size_t deserializeSignedInteger(Type& v, Data& data)
   }
   else
   {
-    // @todo; panic
+    CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0");
+    return false;
   }
-  return 0;
+  return false;
 }
 /**
  * Specialization for bool.
@@ -383,38 +413,41 @@ struct traits<bool>
   using Type = bool;
 
   template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
     return serializePrimitive((0b111 << 5) | (20 + (1 ? v : 0)), data);
   }
 
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     std::uint8_t type;
-    std::size_t size = deserializePrimitive(type, data);
-    if ((type >> 5) == (0b111))
+    result res = deserializePrimitive(type, data);
+    std::uint8_t read_major_type = type >> 5;
+    if (read_major_type == 0b111)
     {
       if ((type & 0b11111) == 21)
       {
         v = true;
-        return size;
+        return res;
       }
       else if ((type & 0b11111) == 20)
       {
         v = false;
-        return size;
+        return res;
       }
       else
       {
-        // @todo type error.
+        CBOR_TYPE_ERROR("Parsed type " + std::to_string(type) + " was not true or false types.");
+        return false;
       }
     }
     else
     {
-      // @todo type error.
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b111");
+      return false;
     }
-    return 0;
+    return false;
   }
 };
 
@@ -427,24 +460,25 @@ struct traits<std::nullptr_t>
   using Type = std::nullptr_t;
 
   template <typename Data>
-  static std::size_t serializer(const Type& /* v */, Data& data)
+  static result serializer(const Type& /* v */, Data& data)
   {
     return serializePrimitive((0b111 << 5) | 22, data);
   }
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     std::uint8_t type;
-    std::size_t size = deserializePrimitive(type, data);
+    result res = deserializePrimitive(type, data);
     if (type == ((0b111 << 5) | 22))
     {
       v = nullptr;
     }
     else
     {
-      // @todo type error
+      CBOR_TYPE_ERROR("Parsed type " + std::to_string(type) + " is different then expected type 0xF6");
+      return false;
     }
-    return size;
+    return res;
   }
 };
 
@@ -455,13 +489,13 @@ template <typename IntegerType>
 struct traits<trait_families::unsigned_integer, IntegerType>
 {
   template <typename Type, typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
     return serializeItem(0b000, v, data);
   }
 
   template <typename Type, typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     return deserializeInteger(0b000, v, data);
   }
@@ -473,7 +507,7 @@ template <typename Type>
 struct traits<trait_families::signed_integer, Type>
 {
   template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
     if (v < 0)
     {
@@ -485,7 +519,7 @@ struct traits<trait_families::signed_integer, Type>
     }
   }
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     return deserializeSignedInteger(v, data);
   }
@@ -520,7 +554,7 @@ struct traits<trait_families::floating_point, FloatingPointType>
   using Helper = trait_floating_point_helper<Type>;
 
   template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
     serializePrimitive((0b111 << 5) | Helper::minor_type, data);
     const std::size_t offset = data.size();
@@ -531,23 +565,26 @@ struct traits<trait_families::floating_point, FloatingPointType>
   }
 
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     std::uint8_t type;
-    std::size_t size = deserializePrimitive(type, data);
+    result res = deserializePrimitive(type, data);
     if (type == ((0b111 << 5) | Helper::minor_type))
     {
       const std::size_t offset = data.position();
-      data.advance(sizeof(Type));  // advance before using the memory. This prevents reading out of bounds.
+      res += data.advance(sizeof(Type));  // advance before using the memory. This prevents reading out of bounds.
       auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
       v = *reinterpret_cast<const Type*>(&fixed);
-      return sizeof(Type) + size;
+      return res;
     }
     else
     {
       // type error.
+      CBOR_TYPE_ERROR("Parsed type " + std::to_string(type) + " is different then expected type "
+                      + std::to_string(Helper::minor_type));
+      return false;
     }
-    return 0;
+    return false;
   }
 };
 
@@ -559,7 +596,7 @@ struct traits<const char*>
 {
   using Type = const char*;
   template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
     std::size_t length = strlen(v);
     std::size_t addition = serializeItem(0b011, length, data);
@@ -579,7 +616,7 @@ struct traits<trait_families::c_array_family, ArrayElement>
   using Type = ArrayElement;
 
   template <typename InType, typename Data, size_t N>
-  static std::size_t serializer(const InType (&d)[N], Data& data)
+  static result serializer(const InType (&d)[N], Data& data)
   {
     std::size_t addition = 0;
     addition += serializeItem(0b100, N, data);
@@ -590,27 +627,37 @@ struct traits<trait_families::c_array_family, ArrayElement>
     return addition;
   }
   template <typename InType, typename Data, size_t N>
-  static std::size_t deserializer(InType (&d)[N], Data& data)
+  static result deserializer(InType (&d)[N], Data& data)
   {
     std::uint8_t first_byte;
     std::uint64_t length = 0;
-    std::size_t len = deserializeItem(first_byte, length, data);
+    result res = deserializeItem(first_byte, length, data);
     if (length != N)
     {
-      // todo incorrect length.
+      // Treat incorrect lengths as incorrect type.
+      CBOR_TYPE_ERROR("Expected array of " + std::to_string(length) + " long, but only have array of "
+                      + std::to_string(N));
+      return false;
     }
-    if ((first_byte >> 5) == 0b100)
+
+    std::uint8_t read_major_type = first_byte >> 5;
+    if (read_major_type == 0b100)
     {
       for (std::size_t i = 0; i < length; i++)
+      {
+        res += from_cbor(d[i], data);
+        if (!res)  // if failed... abort early.
         {
-          len += from_cbor(d[i], data);
+          return res;
         }
+      }
     }
     else
     {
-      // todo incorrect type.
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b100");
+      return false;
     }
-    return len;
+    return res;
   }
 };
 

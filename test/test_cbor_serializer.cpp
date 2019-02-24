@@ -31,6 +31,7 @@
 #include <array>
 #include <iostream>
 #include <vector>
+//  #define CBOR_USE_EXCEPTIONS 0
 #include "cbor/cbor.h"
 #include "cbor/stl.h"
 
@@ -203,6 +204,7 @@ void test_stl()
     cbor::from_cbor(as_objects, z);
 
     std::cout << "List of pairs" << std::endl;
+    std::cout << "Single object:" << cbor::hexdump(single_obj) << std::endl;
     std::cout << single_obj.prettyPrint() << std::endl;
   }
 }
@@ -569,6 +571,14 @@ void test_result_operators()
   std::uint32_t x = assign_one;
   std::cout << "x: " << x << std::endl;
   test(x, 1u);
+
+  cbor::result to_add;
+  cbor::result int_addition = to_add + 5u;
+  std:: cout << "int_addition: " << int_addition << std::endl;
+  test(int_addition.success, true);
+  test(int_addition.length, 5u);
+  int_addition += 5;
+  test(int_addition.length, 10u);
 }
 
 
@@ -582,5 +592,13 @@ int main(int /* argc */, char** /* argv */)
   test_into_object();
   test_result_operators();
 
+  if (failed)
+  {
+    std::cerr << "\033[31m" << "FAIL" << "\033[0m" << std::endl;
+  }
+  else
+  {
+    std::cerr << "\033[32m" << "Success" << "\033[0m" << std::endl;
+  }
   return failed;
 }

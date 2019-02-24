@@ -35,6 +35,7 @@
 #include <map>
 #include <tuple>
 #include <vector>
+#include "exceptions.h"
 #include "cbor.h"
 #include "traits.h"
 #include "util.h"
@@ -42,6 +43,7 @@
 namespace cbor
 {
 using Data = std::vector<DataType>;
+
 
 std::ostream& operator<< (std::ostream &out, const result& res)
 {
@@ -62,9 +64,10 @@ struct write_adapter<Data> : std::true_type
   }
   write_adapter<Data>(Data& d) : data{ d } {};
 
-  void resize(std::size_t value)
+  result resize(std::size_t value)
   {
     data.resize(value);
+    return true;
   }
   std::size_t size() const
   {
@@ -72,9 +75,10 @@ struct write_adapter<Data> : std::true_type
   }
   DataType& operator[](std::size_t pos)
   {
-    if (pos >= data.size())
+    if (pos > data.size())
     {
-      // todo; throw?
+      CBOR_BUFFER_ERROR("Write failed: " + std::to_string(pos) + " exceed data.size(): " + std::to_string(data.size()));
+      return data[data.size() - 1];
     }
     return data[pos];
   }
@@ -95,13 +99,15 @@ struct read_adapter<Data> : std::true_type
   {
     return cursor;
   }
-  void advance(std::size_t count)
+  result advance(std::size_t count)
   {
     cursor += count;
-    if (cursor >= data.size())
+    if (cursor > data.size())
     {
-      // Throw!?
+      CBOR_BUFFER_ERROR("Advance failed: " + std::to_string(cursor) + " exceed data size: " + std::to_string(data.size()));
+      return false;
     }
+    return count;
   }
   std::size_t size() const
   {
@@ -109,9 +115,10 @@ struct read_adapter<Data> : std::true_type
   }
   const DataType& operator[](std::size_t pos) const
   {
-    if (pos >= data.size())
+    if (pos > data.size())
     {
-      // Throw!?
+      CBOR_BUFFER_ERROR("Read failed: " + std::to_string(pos) + " exceed data size: " + std::to_string(data.size()));
+      return data[data.size() - 1];
     }
     return data[pos];
   }
@@ -206,20 +213,20 @@ struct traits<std::string>
 {
   using Type = std::string;
   template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
     return to_cbor(v.c_str(), data);
   }
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     std::uint64_t string_length;
-    std::size_t len = deserializeInteger(0b011, string_length, data);
+    result res = deserializeInteger(0b011, string_length, data);
     v.clear();
     std::size_t offset = data.position();
-    data.advance(string_length);  // advance before reading.
+    res += data.advance(string_length);  // advance before reading.
     v.insert(v.begin(), &(data[offset]), &(data[offset]) + string_length);
-    return len + string_length;
+    return res;
   }
 };
 
@@ -231,7 +238,7 @@ struct traits<std::vector<T>>
 {
   using Type = std::vector<T>;
   template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
     std::size_t addition = 0;
     addition += serializeItem(0b100, v.size(), data);
@@ -242,17 +249,20 @@ struct traits<std::vector<T>>
     return addition;
   }
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     std::uint8_t first_byte;
     std::uint64_t length;
-    std::size_t len = deserializeItem(first_byte, length, data);
-    if ((first_byte >> 5) == 0b100)
+    result res = deserializeItem(first_byte, length, data);
+    std::uint8_t read_major_type = first_byte >> 5;
+    if (read_major_type == 0b100)
     {
       // it is a list.
       if ((first_byte & 0b11111) == 31)
       {
         // todo indefinite length...
+        CBOR_PARSE_ERROR("Unhandled indefinite length");
+        return false;
       }
       else
       {
@@ -260,12 +270,17 @@ struct traits<std::vector<T>>
         for (std::size_t i = 0; i < length; i++)
         {
           typename Type::value_type tmp;
-          len += from_cbor(tmp, data);
+          res += from_cbor(tmp, data);
           v.emplace_back(std::move(tmp));
         }
       }
     }
-    return len;
+    else
+    {
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b100");
+      return false;
+    }
+    return res;
   }
 };
 
@@ -276,19 +291,19 @@ template <size_t index, typename... Ts>
 struct trait_tuple_element_helper
 {
   template <typename Data>
-  static std::size_t serialize(const std::tuple<Ts...>& t, Data& data)
+  static result serialize(const std::tuple<Ts...>& t, Data& data)
   {
-    std::size_t value = to_cbor(std::get<sizeof...(Ts) - index>(t), data);
-    value += trait_tuple_element_helper<index - 1, Ts...>::serialize(t, data);
-    return value;
+    result res = to_cbor(std::get<sizeof...(Ts) - index>(t), data);
+    res += trait_tuple_element_helper<index - 1, Ts...>::serialize(t, data);
+    return res;
   }
 
   template <typename Data>
   static std::size_t deserialize(std::tuple<Ts...>& t, Data& data)
   {
-    std::size_t value = from_cbor(std::get<sizeof...(Ts) - index>(t), data);
-    value += trait_tuple_element_helper<index - 1, Ts...>::deserialize(t, data);
-    return value;
+    result res = from_cbor(std::get<sizeof...(Ts) - index>(t), data);
+    res += trait_tuple_element_helper<index - 1, Ts...>::deserialize(t, data);
+    return res;
   }
 };
 
@@ -299,12 +314,12 @@ template <typename... Ts>
 struct trait_tuple_element_helper<0, Ts...>
 {
   template <typename Data>
-  static std::size_t serialize(const std::tuple<Ts...>& /*t*/, Data& /*data*/)
+  static result serialize(const std::tuple<Ts...>& /*t*/, Data& /*data*/)
   {
     return 0;
   }
   template <typename Data>
-  static std::size_t deserialize(std::tuple<Ts...>& /*t*/, Data& /*data*/)
+  static result deserialize(std::tuple<Ts...>& /*t*/, Data& /*data*/)
   {
     return 0;
   }
@@ -318,32 +333,36 @@ struct traits<std::tuple<Ts...>>
 {
   using Type = std::tuple<Ts...>;
   template <typename Data>
-  static std::size_t serializer(const Type& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
-    std::size_t addition = 0;
-    addition += serializeItem(0b100, sizeof...(Ts), data);
+    result addition = serializeItem(0b100, sizeof...(Ts), data);
     return addition + trait_tuple_element_helper<sizeof...(Ts), Ts...>::serialize(v, data);
   }
 
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     std::uint8_t first_byte;
     std::uint64_t length;
-    std::size_t len = deserializeItem(first_byte, length, data);
+    result res = deserializeItem(first_byte, length, data);
+    std::uint8_t read_major_type = first_byte >> 5;
     if (length != sizeof...(Ts))
     {
-      // todo incorrect tuple length.
+      // Treat incorrect lengths as incorrect type.
+      CBOR_TYPE_ERROR("Expected array of " + std::to_string(sizeof...(Ts)) + " long, but only have array of "
+                      + std::to_string(length));
+      return false;
     }
-    if ((first_byte >> 5) == 0b100)
+    if (read_major_type == 0b100)
     {
-      return len + trait_tuple_element_helper<sizeof...(Ts), Ts...>::deserialize(v, data);
+      return res + trait_tuple_element_helper<sizeof...(Ts), Ts...>::deserialize(v, data);
     }
     else
     {
-      // todo incorrect type.
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b100");
+      return false;
     }
-    return len;
+    return res;
   }
 };
 
@@ -355,7 +374,7 @@ struct traits<std::pair<A, B>>
 {
   using Type = std::pair<A, B>;
   template <typename Data>
-  static std::size_t serializer(const std::pair<A, B>& v, Data& data)
+  static result serializer(const std::pair<A, B>& v, Data& data)
   {
     std::size_t addition = 0;
     addition += serializeItem(0b100, uint8_t{ 2 }, data);
@@ -365,21 +384,22 @@ struct traits<std::pair<A, B>>
   }
 
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     std::uint8_t first_byte;
     std::uint64_t length;
-    std::size_t len = deserializeItem(first_byte, length, data);
+    result res = deserializeItem(first_byte, length, data);
     if (first_byte == ((0b100 << 5) | 2))
     {
-      len += from_cbor(v.first, data);
-      len += from_cbor(v.second, data);
+      res += from_cbor(v.first, data);
+      res += from_cbor(v.second, data);
     }
     else
     {
-      // todo type incorrect
+      CBOR_TYPE_ERROR("Parsed type " + std::to_string(first_byte) + " is different then expected type 0x82");
+      return false;
     }
-    return len;
+    return res;
   }
 };
 
@@ -391,7 +411,7 @@ struct traits<std::map<KeyType, ValueType>>
 {
   using Type = std::map<KeyType, ValueType>;
   template <typename Data>
-  static std::size_t serializer(const std::map<KeyType, ValueType>& v, Data& data)
+  static result serializer(const std::map<KeyType, ValueType>& v, Data& data)
   {
     std::size_t addition = 0;
     addition += serializeItem(0b101, v.size(), data);
@@ -406,17 +426,20 @@ struct traits<std::map<KeyType, ValueType>>
   }
 
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     std::uint8_t first_byte;
     std::uint64_t length;
-    std::size_t len = deserializeItem(first_byte, length, data);
-    if ((first_byte >> 5) == 0b101)
+    result res = deserializeItem(first_byte, length, data);
+    std::uint8_t read_major_type = first_byte >> 5;
+    if (read_major_type == 0b101)
     {
       // it is a map!
       if ((first_byte & 0b11111) == 31)
       {
         // todo indefinite length...
+        CBOR_PARSE_ERROR("Unhandled indefinite length");
+        return false;
       }
       else
       {
@@ -424,13 +447,22 @@ struct traits<std::map<KeyType, ValueType>>
         {
           typename Type::key_type key;
           typename Type::mapped_type value;
-          len += from_cbor(key, data);
-          len += from_cbor(value, data);
+          res += from_cbor(key, data);
+          res += from_cbor(value, data);
           v.emplace(std::move(key), std::move(value));
+          if (!res)
+          {
+            return res;
+          }
         }
       }
     }
-    return len;
+    else
+    {
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b101");
+      return false;
+    }
+    return res;
   }
 };
 
@@ -442,7 +474,7 @@ struct traits<cbor_object>
 {
   using Type = cbor_object;
   template <typename Data>
-  static std::size_t serializer(const Type& obj, Data& data)
+  static result serializer(const Type& obj, Data& data)
   {
     const auto& v = obj.serialized_;
     std::size_t offset = data.size();
@@ -455,13 +487,13 @@ struct traits<cbor_object>
   }
 
   template <typename Data>
-  static std::size_t deserializer(Type& v, Data& data)
+  static result deserializer(Type& v, Data& data)
   {
     //  Just copy the approppriate chunks into the object....
     std::size_t start_pos = data.position();
     std::uint8_t first_byte;
     std::uint64_t value;
-    std::size_t len = deserializeItem(first_byte, value, data);
+    result res = deserializeItem(first_byte, value, data);
     std::uint8_t major_type = first_byte >> 5;
 
     auto copy_to_object = [&v, &data](std::size_t start, std::size_t length) {
@@ -475,7 +507,7 @@ struct traits<cbor_object>
     // simple fixed length and built in types:
     if ((major_type == 0b000) || (major_type == 0b001) || (major_type == 0b111))
     {
-      return copy_to_object(start_pos, len);
+      return copy_to_object(start_pos, res);
     }
 
     if (major_type == 0b100)
@@ -486,12 +518,11 @@ struct traits<cbor_object>
         // Todo handle indefinite.
       }
       // copy the start byte.
-      copy_to_object(start_pos, len);
+      copy_to_object(start_pos, res);
       for (std::size_t i = 0; i < value; i++)
       {
-        len += deserializer(v, data);
+        res += deserializer(v, data);
       }
-      return len;
     }
 
     if (major_type == 0b101)
@@ -502,13 +533,12 @@ struct traits<cbor_object>
         // Todo handle indefinite.
       }
       // copy the start...
-      copy_to_object(start_pos, len);
+      copy_to_object(start_pos, res);
       for (std::size_t i = 0; i < value; i++)
       {
-        len += deserializer(v, data);
-        len += deserializer(v, data);
+        res += deserializer(v, data);
+        res += deserializer(v, data);
       }
-      return len;
     }
 
     // String-esque
@@ -519,11 +549,11 @@ struct traits<cbor_object>
       {
         // Todo handle indefinite.
       }
-      copy_to_object(start_pos, len);
-      len += copy_to_object(start_pos + len, value);
-      data.advance(value);
+      copy_to_object(start_pos, res);
+      res += copy_to_object(start_pos + res, value);
+      res += data.advance(value);
     }
-    return len;
+    return res;
   }
 };
 }  // namespace detail
@@ -532,6 +562,7 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
 {
   // Create this bespoke read adapter without any copies.
   const auto& data = serialized_;
+  hexdump(data);
   std::uint8_t first_byte = data.front();
   std::uint8_t major_type = first_byte >> 5;
 

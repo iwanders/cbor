@@ -28,50 +28,57 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
+#ifndef CBOR_USE_EXCEPTIONS
+#define CBOR_USE_EXCEPTIONS 1
+#endif
 
-#include <cstdint>
-#include <limits>
-#include <utility>
-#include "pod.h"
-#include "traits.h"
-#include "util.h"
-
+#if CBOR_USE_EXCEPTIONS==1
+#include <stdexcept>
 namespace cbor
 {
-namespace detail
+/**
+ * @brief base class for all cbor errors
+ */
+class error : public std::runtime_error
 {
-template <typename T, typename... Data, std::enable_if_t<has_trait<T>::value, int> = 0>
-result to_cbor(const T& v, detail::write_adapter<Data...>& data)
-{
-  return detail::trait_dispatcher<T>::Type::Trait::serializer(v, data);
-}
-
-template <typename T, typename... Data, std::enable_if_t<has_trait<T>::value, int> = 0>
-result from_cbor(T& v, detail::read_adapter<Data...>& data)
-{
-  return detail::trait_dispatcher<T>::Type::Trait::deserializer(v, data);
-}
-}  // namespace detail
+public:
+  using std::runtime_error::runtime_error;
+};
 
 /**
- * @brief Entry to the trait system, serializes v into data.
- * @param v The data to serialize.
- * @param data The data vector to serialize into.
+ * @brief Thrown on unhandled cbor types, or malformed data.
  */
-template <typename T, typename Arg0, typename... ArgN,
-          std::enable_if_t<detail::get_write_adapter<Arg0>::value, int> = 0>
-result to_cbor(const T& v, Arg0&& arg0, ArgN&&... argn)
+class parse_error : public error
 {
-  using write_adapter = detail::get_write_adapter<Arg0>;
-  auto wrapper = write_adapter::adapt(std::forward<Arg0>(arg0), std::forward<ArgN>(argn)...);
-  return to_cbor(v, wrapper);
-}
+public:
+  using error::error;
+};
 
-template <typename T, typename Arg0, typename... ArgN, std::enable_if_t<detail::get_read_adapter<Arg0>::value, int> = 0>
-result from_cbor(T& v, Arg0&& arg0, ArgN&&... argn)
+/**
+ * @brief Thrown if deserialized type doesnt fit in expected type or different type was encountered then expected.
+ */
+class type_error : public error
 {
-  using read_adapter = detail::get_read_adapter<Arg0>;
-  auto wrapper = read_adapter::adapt(std::forward<Arg0>(arg0), std::forward<ArgN>(argn)...);
-  return from_cbor(v, wrapper);
-}
+public:
+  using error::error;
+};
+
+/**
+ * @brief Thrown when reading outside of a buffer or buffer couldn't be adequately resized.
+ */
+class buffer_error : public error
+{
+public:
+  using error::error;
+};
 }  // namespace cbor
+// define macros to use use when throwing an exception.
+#define CBOR_PARSE_ERROR(A) throw cbor::parse_error(A);
+#define CBOR_TYPE_ERROR(A) throw cbor::type_error(A);
+#define CBOR_BUFFER_ERROR(A) throw cbor::buffer_error(A);
+#else
+// make the macro's nops
+#define CBOR_PARSE_ERROR(A)
+#define CBOR_TYPE_ERROR(A)
+#define CBOR_BUFFER_ERROR(A)
+#endif

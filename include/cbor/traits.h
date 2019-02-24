@@ -53,6 +53,30 @@ struct write_adapter : std::false_type
 template <typename... Data>
 struct read_adapter : std::false_type
 {
+
+  /**
+   * @brief Returns the current cursor position.
+   */
+  //  std::size_t position() const;
+
+  /**
+   * @brief Advances the cursor and returns result.
+   * @return result length equals count if valid. If cursor moved out of buffer this returns false result.
+   * @throws buffer_error in case exceptions are enabled and cursor would move out of bounds.
+   */
+  //  result advance(std::size_t count);
+
+  /**
+   * @brief Returns the size of the read buffer.
+   */
+  //  std::size_t size() const
+
+  /**
+   * @brief Returns value from the buffer.
+   * @return Reference to value at position pos in the buffer.
+   * @throws buffer_error in case position is outside of the buffer.
+   */
+  //  const DataType& operator[](std::size_t pos) const;
 };
 
 // Retrieval helpers.
