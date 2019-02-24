@@ -497,8 +497,15 @@ void test_into_object()
     test_result(res, cbor_representation.serialized_, input);
   }
   {
-    // test copying indefinite map into object.bf61626163ff
+    // test copying indefinite map into object.
     Data input = { 0xBF, 0x61, 0x62, 0x61, 0x63, 0xFF };
+    cbor::cbor_object cbor_representation;
+    auto res = cbor::from_cbor(cbor_representation, input);
+    test_result(res, cbor_representation.serialized_, input);
+  }
+  {
+    // test copying indefinite string into object.
+    Data input = {0x7f, 0x65, 0x73, 0x74, 0x72, 0x65, 0x61, 0x64, 0x6d, 0x69, 0x6e, 0x67, 0xff};
     cbor::cbor_object cbor_representation;
     auto res = cbor::from_cbor(cbor_representation, input);
     test_result(res, cbor_representation.serialized_, input);
@@ -801,7 +808,7 @@ void test_appendix_a()
       { { "a", "A" }, { "b", "B" }, { "c", "C" }, { "d", "D" }, { "e", "E" } }, true);
 
   // Indefinite lengths
-  //  test_appendix_A_decode<std::string>("7f657374726561646d696e67ff", "streaming", false);
+  test_appendix_A_decode<std::string>("7f657374726561646d696e67ff", "streaming", false);
   test_appendix_A_decode<std::vector<std::uint32_t>>("9fff", {}, false);
   test_appendix_A_decode<std::vector<std::uint32_t>>("9f0102030405060708090a0b0c0d0e0f101112131415161718181819ff",
   {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,  17, 18, 19, 20, 21, 22, 23,  24, 25}, false);

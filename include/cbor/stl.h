@@ -229,22 +229,49 @@ template <>
 struct traits<std::string>
 {
   using Type = std::string;
+
   template <typename Data>
   static result serializer(const Type& v, Data& data)
   {
     return to_cbor(v.c_str(), data);
   }
+
   template <typename Data>
   static result deserializer(Type& v, Data& data)
   {
-    std::uint64_t string_length;
-    result res = deserializeInteger(0b011, string_length, data);
-    v.clear();
-    std::size_t offset = data.position();
-    res += data.advance(string_length);  // advance before reading.
-    if (res)
+    std::uint8_t first_byte;
+    std::uint64_t length;
+    result res = deserializeItem(first_byte, length, data);
+    std::uint8_t read_major_type = first_byte >> 5;
+    if (read_major_type == 0b011 || read_major_type == 0b010)
     {
-      v.insert(v.begin(), &(data[offset]), &(data[offset]) + string_length);
+      if ((first_byte & 0b11111) == 31)
+      {
+        while (data[data.position()] != 255)
+        {
+          Type tmp;
+          res += from_cbor(tmp, data);
+          v.insert(v.end(), tmp.begin(), tmp.end());
+        }
+        res += data.advance(1); // pop the break byte.
+        return res;
+      }
+      else
+      {
+        v.clear();
+        std::size_t offset = data.position();
+        res += data.advance(length);  // advance before reading.
+        if (res)
+        {
+          v.insert(v.begin(), &(data[offset]), &(data[offset]) + length);
+        }
+      }
+    }
+    else
+    {
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+                      " is different then expected type 0b011");
+      return false;
     }
     return res;
   }
@@ -603,7 +630,14 @@ struct traits<cbor_object>
       // array.
       if ((first_byte & 0b11111) == 31)
       {
-        // Todo handle indefinite.
+        copy_to_object(start_pos, res);
+        while(data[data.position()] != 255)
+        {
+          res += deserializer(v, data);
+        }
+        copy_to_object(data.position(), 1);
+        res += data.advance(1); // remove the break.
+        return res;
       }
       // append string prefix.
       copy_to_object(start_pos, res);
