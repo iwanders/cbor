@@ -32,7 +32,7 @@
 #define CBOR_USE_EXCEPTIONS 1
 #endif
 
-#if CBOR_USE_EXCEPTIONS==1
+#if CBOR_USE_EXCEPTIONS == 1
 #include <stdexcept>
 namespace cbor
 {

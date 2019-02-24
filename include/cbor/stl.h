@@ -35,8 +35,8 @@
 #include <map>
 #include <tuple>
 #include <vector>
-#include "exceptions.h"
 #include "cbor.h"
+#include "exceptions.h"
 #include "traits.h"
 #include "util.h"
 
@@ -44,12 +44,11 @@ namespace cbor
 {
 using Data = std::vector<DataType>;
 
-
-std::ostream& operator<< (std::ostream &out, const result& res)
+std::ostream& operator<<(std::ostream& out, const result& res)
 {
-    std::stringstream ss;
-    ss << "(" << std::boolalpha << res.success << ", " << res.length << ")";
-    return out << ss.str();
+  std::stringstream ss;
+  ss << "(" << std::boolalpha << res.success << ", " << res.length << ")";
+  return out << ss.str();
 }
 
 namespace detail
@@ -104,7 +103,8 @@ struct read_adapter<Data> : std::true_type
     cursor += count;
     if (cursor > data.size())
     {
-      CBOR_BUFFER_ERROR("Advance failed: " + std::to_string(cursor) + " exceed data size: " + std::to_string(data.size()));
+      CBOR_BUFFER_ERROR("Advance failed: " + std::to_string(cursor) +
+                        " exceed data size: " + std::to_string(data.size()));
       return false;
     }
     return count;
@@ -280,7 +280,8 @@ struct traits<std::vector<T>>
     }
     else
     {
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b100");
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+                      " is different then expected type 0b100");
       return false;
     }
     return res;
@@ -352,8 +353,8 @@ struct traits<std::tuple<Ts...>>
     if (length != sizeof...(Ts))
     {
       // Treat incorrect lengths as incorrect type.
-      CBOR_TYPE_ERROR("Expected array of " + std::to_string(sizeof...(Ts)) + " long, but only have array of "
-                      + std::to_string(length));
+      CBOR_TYPE_ERROR("Expected array of " + std::to_string(sizeof...(Ts)) + " long, but only have array of " +
+                      std::to_string(length));
       return false;
     }
     if (read_major_type == 0b100)
@@ -362,7 +363,8 @@ struct traits<std::tuple<Ts...>>
     }
     else
     {
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b100");
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+                      " is different then expected type 0b100");
       return false;
     }
     return res;
@@ -464,7 +466,8 @@ struct traits<std::map<KeyType, ValueType>>
     }
     else
     {
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b101");
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+                      " is different then expected type 0b101");
       return false;
     }
     return res;
@@ -554,8 +557,10 @@ struct traits<cbor_object>
       {
         // Todo handle indefinite.
       }
+      // append string prefix.
       copy_to_object(start_pos, res);
-      res += copy_to_object(start_pos + res, value);
+      // copy the string.
+      copy_to_object(start_pos + res, value);
       res += data.advance(value);
     }
     return res;

@@ -49,7 +49,6 @@ struct traits;
 template <typename... Data>
 struct write_adapter : std::false_type
 {
-
   /**
    * @brief This function resizes the container to allow writing to it.
    * @return result whether the container resize succceeded, length is always 0.
@@ -72,7 +71,6 @@ struct write_adapter : std::false_type
 template <typename... Data>
 struct read_adapter : std::false_type
 {
-
   /**
    * @brief Returns the current cursor position.
    */

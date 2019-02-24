@@ -33,16 +33,16 @@
 #include <cstring>
 #include <limits>
 #include "cbor.h"
+#include "exceptions.h"
 #include "traits.h"
 #include "util.h"
-#include "exceptions.h"
 
 namespace cbor
 {
 struct result
 {
-  bool success { true };
-  std::size_t length { 0 };
+  bool success{ true };
+  std::size_t length{ 0 };
 
   result(){};
 
@@ -125,7 +125,8 @@ struct write_adapter<DataType*> : std::true_type
   {
     if (value >= max_length)
     {
-      CBOR_BUFFER_ERROR("Resize failed: " + std::to_string(value) + " exceed max length: " + std::to_string(max_length));
+      CBOR_BUFFER_ERROR("Resize failed: " + std::to_string(value) +
+                        " exceed max length: " + std::to_string(max_length));
       return false;
     }
     used_size = value;
@@ -179,7 +180,8 @@ struct read_adapter<DataType*> : std::true_type
     cursor += count;
     if (cursor > max_length)
     {
-      CBOR_BUFFER_ERROR("Advance failed: " + std::to_string(cursor) + " exceed max length: " + std::to_string(max_length));
+      CBOR_BUFFER_ERROR("Advance failed: " + std::to_string(cursor) +
+                        " exceed max length: " + std::to_string(max_length));
       return false;
     }
     return count;
@@ -256,7 +258,7 @@ result serializeItem(const std::uint8_t major_type, const std::uint16_t v, Data&
   data[offset] = std::uint8_t(major_type << 5) | 25;
   auto fixed = fixEndianness(v);
   if (res)
-  { // Only do this if we could resize the data.
+  {  // Only do this if we could resize the data.
     *reinterpret_cast<std::uint16_t*>(&(data[offset + 1])) = fixed;
   }
   return res + 3;
@@ -277,7 +279,7 @@ result serializeItem(const std::uint8_t major_type, const std::uint32_t v, Data&
   auto fixed = fixEndianness(v);
   data[offset] = std::uint8_t(major_type << 5) | 26;
   if (res)
-  { // Only do this if we could resize the data.
+  {  // Only do this if we could resize the data.
     *reinterpret_cast<std::uint32_t*>(&(data[offset + 1])) = fixed;
   }
   return res + 5;
@@ -298,7 +300,7 @@ result serializeItem(const std::uint8_t major_type, const std::uint64_t v, Data&
   data[offset] = std::uint8_t(major_type << 5) | 27;
   auto fixed = fixEndianness(v);
   if (res)
-  { // Only do this if we could resize the data.
+  {  // Only do this if we could resize the data.
     *reinterpret_cast<std::uint64_t*>(&(data[offset + 1])) = fixed;
   }
   return res + 9;
@@ -472,7 +474,8 @@ struct traits<bool>
     }
     else
     {
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b111");
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+                      " is different then expected type 0b111");
       return false;
     }
     return false;
@@ -584,15 +587,15 @@ struct traits<trait_families::floating_point, FloatingPointType>
   template <typename Data>
   static result serializer(const Type& v, Data& data)
   {
-    serializePrimitive((0b111 << 5) | Helper::minor_type, data);
+    result res = serializePrimitive((0b111 << 5) | Helper::minor_type, data);
     const std::size_t offset = data.size();
-    result res = data.resize(offset + sizeof(Type));
+    res += data.resize(offset + sizeof(Type));
     if (res)
     {
       auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
       *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
     }
-    return res;
+    return res + sizeof(Type);
   }
 
   template <typename Data>
@@ -611,8 +614,8 @@ struct traits<trait_families::floating_point, FloatingPointType>
     else
     {
       // type error.
-      CBOR_TYPE_ERROR("Parsed type " + std::to_string(type) + " is different then expected type "
-                      + std::to_string(Helper::minor_type));
+      CBOR_TYPE_ERROR("Parsed type " + std::to_string(type) + " is different then expected type " +
+                      std::to_string(Helper::minor_type));
       return false;
     }
     return false;
@@ -650,7 +653,7 @@ struct traits<trait_families::c_array_family, ArrayElement>
   static result serializer(const InType (&d)[N], Data& data)
   {
     result res = serializeItem(0b100, N, data);
-    for (std::size_t i = 0 ; i < N; i++)
+    for (std::size_t i = 0; i < N; i++)
     {
       res += to_cbor(d[i], data);
       if (!res)
@@ -669,8 +672,8 @@ struct traits<trait_families::c_array_family, ArrayElement>
     if (length != N)
     {
       // Treat incorrect lengths as incorrect type.
-      CBOR_TYPE_ERROR("Expected array of " + std::to_string(length) + " long, but only have array of "
-                      + std::to_string(N));
+      CBOR_TYPE_ERROR("Expected array of " + std::to_string(length) + " long, but only have array of " +
+                      std::to_string(N));
       return false;
     }
 
@@ -688,13 +691,13 @@ struct traits<trait_families::c_array_family, ArrayElement>
     }
     else
     {
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) + " is different then expected type 0b100");
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+                      " is different then expected type 0b100");
       return false;
     }
     return res;
   }
 };
-
 
 }  // namespace detail
 }  // namespace cbor
