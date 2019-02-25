@@ -328,6 +328,10 @@ struct traits<std::vector<T>>
       {
         typename Type::value_type tmp;
         res += from_cbor(tmp, data);
+        if (!res)
+        {
+          return res;
+        }
         v.emplace_back(std::move(tmp));
       }
       res += data.readBreak();
@@ -342,6 +346,10 @@ struct traits<std::vector<T>>
       {
         typename Type::value_type tmp;
         res += from_cbor(tmp, data);
+        if (!res)
+        {
+          return res;
+        }
         v.emplace_back(std::move(tmp));
       }
       return res;
@@ -511,6 +519,10 @@ struct traits<std::map<KeyType, ValueType>>
           typename Type::mapped_type value;
           res += from_cbor(key, data);
           res += from_cbor(value, data);
+          if (!res)
+          {
+            return res;
+          }
           v.emplace(std::move(key), std::move(value));
         }
         res += data.advance(1); // pop the break byte.
