@@ -54,7 +54,7 @@ std::ostream& operator<<(std::ostream& out, const result& res)
 namespace detail
 {
 template <>
-struct write_adapter<Data> : std::true_type
+struct write_adapter<Data> : std::true_type, write_adapter_helper<write_adapter<Data>>
 {
   Data& data;
   static write_adapter<Data> adapt(Data& d)
@@ -84,7 +84,7 @@ struct write_adapter<Data> : std::true_type
 };
 
 template <>
-struct read_adapter<Data> : std::true_type
+struct read_adapter<Data> : std::true_type, read_adapter_helper<read_adapter<Data>>
 {
   const Data& data;
   std::size_t cursor = 0;
@@ -149,7 +149,7 @@ std::string hexdump(const std::array<DataType, Length>& d, std::size_t max_lengt
 /**
  * @brief An object to represent an already serialized compact binary object.
  */
-class cbor_object
+class cbor_object : public detail::read_adapter_helper<cbor_object>
 {
 public:
   Data serialized_;
@@ -184,6 +184,20 @@ public:
   const Data& serialized() const
   {
     return serialized_;
+  }
+
+  std::size_t position() const
+  {
+    return 0;
+  }
+  const DataType& operator[](std::size_t pos) const
+  {
+    if (pos > serialized_.size())
+    {
+      CBOR_BUFFER_ERROR("Read failed: " + std::to_string(pos) + " exceed size: " + std::to_string(serialized_.size()));
+      return serialized_[serialized_.size() - 1];
+    }
+    return serialized_[pos];
   }
 
   std::string prettyPrint(std::size_t indent = 0) const;
@@ -287,7 +301,7 @@ struct traits<std::vector<T>>
   template <typename Data>
   static result serializer(const Type& v, Data& data)
   {
-    result res = serializeItem(0b100, v.size(), data);
+    result res = data.openArray(v.size());
     for (const auto& k : v)
     {
       res += to_cbor(k, data);
@@ -301,42 +315,37 @@ struct traits<std::vector<T>>
   template <typename Data>
   static result deserializer(Type& v, Data& data)
   {
-    std::uint8_t first_byte;
-    std::uint64_t length;
-    result res = deserializeItem(first_byte, length, data);
-    std::uint8_t read_major_type = first_byte >> 5;
-    if (read_major_type == 0b100)
+    result res = data.expectArray();
+    if (!res)
     {
-      // it is a list.
-      if ((first_byte & 0b11111) == 31)
+      return res;
+    }
+
+    if (data.isIndefinite())
+    {
+      res += data.readIndefiniteArray();
+      while (!data.isBreak())
       {
-        while (data[data.position()] != 255)
-        {
-          typename Type::value_type tmp;
-          res += from_cbor(tmp, data);
-          v.emplace_back(std::move(tmp));
-        }
-        res += data.advance(1); // pop the break byte.
-        return res;
+        typename Type::value_type tmp;
+        res += from_cbor(tmp, data);
+        v.emplace_back(std::move(tmp));
       }
-      else
-      {
-        v.reserve(length);
-        for (std::size_t i = 0; i < length; i++)
-        {
-          typename Type::value_type tmp;
-          res += from_cbor(tmp, data);
-          v.emplace_back(std::move(tmp));
-        }
-      }
+      res += data.readBreak();
+      return res;
     }
     else
     {
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
-                      " is different then expected type 0b100");
-      return false;
+      std::size_t length;
+      res += data.readLength(length);
+      v.reserve(length);
+      for (std::size_t i = 0; i < length; i++)
+      {
+        typename Type::value_type tmp;
+        res += from_cbor(tmp, data);
+        v.emplace_back(std::move(tmp));
+      }
+      return res;
     }
-    return res;
   }
 };
 
@@ -433,7 +442,7 @@ struct traits<std::pair<A, B>>
   template <typename Data>
   static result serializer(const std::pair<A, B>& v, Data& data)
   {
-    result res = serializeItem(0b100, uint8_t{ 2 }, data);
+    result res = data.openArray(2);
     res += to_cbor(v.first, data);
     res += to_cbor(v.second, data);
     return res;
@@ -707,14 +716,14 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
     }
   };
   // simple fixed length and built in types:
-  if (major_type == 0b000)
+  if (isUnsignedInt())
   {
     std::uint64_t z;
     from_cbor(z, data);
     ind(indent);
     ss << "unsigned int: " << z << std::endl;
   }
-  if (major_type == 0b001)
+  if (isSignedInt())
   {
     std::int64_t z;
     from_cbor(z, data);
@@ -728,7 +737,7 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
     ss << "0b111: " << std::endl;
   }
 
-  if (major_type == 0b100)
+  if (isArray())
   {
     std::vector<cbor_object> z;
 
@@ -743,7 +752,7 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
     }
   }
 
-  if (major_type == 0b101)
+  if (isMap())
   {
     std::map<cbor_object, cbor_object> z;
     cbor::from_cbor(z, data);  // yep :)
@@ -759,7 +768,7 @@ std::string cbor_object::prettyPrint(std::size_t indent) const
   }
 
   // String-esque
-  if ((major_type == 0b010) || (major_type == 0b011))
+  if (isText() || isBytes())
   {
     std::string z;
     from_cbor(z, data);

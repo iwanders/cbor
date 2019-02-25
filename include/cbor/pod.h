@@ -39,6 +39,10 @@
 
 namespace cbor
 {
+
+/**
+ * @brief Struct to conveniently convey the resulting length and success flag.
+ */
 struct result
 {
   bool success{ true };
@@ -57,8 +61,9 @@ struct result
   }
 
   /**
-   * @brief If constructed from a bool, set the assign flag.
+   * @brief If constructed from a bool, set the success flag.
    */
+  // This function is only enabled when constructed with a boolean.
   template <typename T, std::enable_if_t<std::is_same<bool, T>::value, int> = 0>
   result(T is_success)
   {
@@ -66,7 +71,7 @@ struct result
   }
 
   /**
-   * @brief Addition operator, add lengths, set succes to the AND of both flags.
+   * @brief Addition operator for the struct itself, add lengths, set succes to the AND of both flags.
    */
   // This function is disabled for integral types to implicitly convert those first.
   template <typename T, std::enable_if_t<(std::is_same<T, result>::value), int> = 0>
@@ -77,6 +82,10 @@ struct result
     res.length = length + a.length;
     return res;
   }
+
+  /**
+   * @brief Addition operator for right hand side is a number.
+   */
   // This function is enabled if the right hand side is not a result type and not a boolean.
   template <typename T, std::enable_if_t<(!std::is_same<T, result>::value && !std::is_same<bool, T>::value), int> = 0>
   result operator+(const T& a)
@@ -86,6 +95,10 @@ struct result
     res.length = length + a;
     return res;
   }
+
+  /**
+   * @brief Addition operator for right hand side is a boolean.
+   */
   // This function is enabled if the right hand side is not a result type but a boolean.
   template <typename T, std::enable_if_t<(!std::is_same<T, result>::value && std::is_same<bool, T>::value), int> = 0>
   result operator+(const T& a)
@@ -96,6 +109,9 @@ struct result
     return res;
   }
 
+  /**
+   * @brief Convenience += assign operator.
+   */
   result& operator+=(const result& a)
   {
     result z = *this + a;
@@ -103,10 +119,18 @@ struct result
     length = z.length;
     return *this;
   }
+
+  /**
+   * @brief Converter to boolean value.
+   */
   explicit operator bool() const
   {
     return success;
   }
+
+  /**
+   * @brief Converter to integer type values.
+   */
   operator std::size_t() const
   {
     return length;
@@ -115,8 +139,153 @@ struct result
 
 namespace detail
 {
+
+template <typename WriteAdapter>
+struct write_adapter_helper
+{
+  result openArray(std::size_t size)
+  {
+    WriteAdapter& reader = *static_cast<WriteAdapter*>(this);
+    return serializeItem(0b100, size, reader);
+  }
+
+  result openIndefiniteArray()
+  {
+    WriteAdapter& reader = *static_cast<WriteAdapter*>(this);
+    return serializePrimitive((0b100 << 5) | 31, reader);
+  }
+
+  result closeIndefinite()
+  {
+    WriteAdapter& reader = *static_cast<WriteAdapter*>(this);
+    return serializePrimitive(0xFF, reader);
+  }
+};
+
+template <typename ReadAdapter>
+struct read_adapter_helper
+{
+  result readLength(std::size_t& length)
+  {
+    ReadAdapter& reader = *static_cast<ReadAdapter*>(this);
+    std::uint8_t first_byte;
+    return deserializeItem(first_byte, length, reader);
+  }
+
+  result expectArray() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    std::uint8_t read_major_type = (reader[reader.position()] >> 5);
+    if (read_major_type != 0b100)
+    {
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+                      " is different then expected type 0b100");
+      return false;
+    }
+    return true;
+  }
+
+  result expectArray(const std::size_t N)
+  {
+    ReadAdapter& reader = *static_cast<ReadAdapter*>(this);
+    std::uint8_t first_byte;
+    std::uint64_t length = 0;
+    result res = deserializeItem(first_byte, length, reader);
+    if (length != N)
+    {
+      // Treat incorrect lengths as incorrect type.
+      CBOR_TYPE_ERROR("Expected array of " + std::to_string(N) + " long, but got array of " +
+                      std::to_string(length));
+      return false;
+    }
+    std::uint8_t read_major_type = (first_byte >> 5);
+    if (read_major_type != 0b100)
+    {
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+                      " is different then expected type 0b100");
+      return false;
+    }
+    return res;
+  }
+
+  result readIndefiniteArray()
+  {
+    ReadAdapter& reader = *static_cast<ReadAdapter*>(this);
+    result res = expectArray();
+    res += isIndefinite();
+    res += reader.advance(1);
+    return res;
+  }
+
+  result readBreak()
+  {
+    ReadAdapter& reader = *static_cast<ReadAdapter*>(this);
+    if (isBreak())
+    {
+      return reader.advance(1);
+    }
+    return false;
+  }
+
+  bool isUnsignedInt() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return (reader[reader.position()] >> 5) == 0b000;
+  }
+  bool isSignedInt() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return (reader[reader.position()] >> 5) == 0b001;
+  }
+  bool isBytes() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return (reader[reader.position()] >> 5) == 0b010;
+  }
+  bool isText() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return (reader[reader.position()] >> 5) == 0b011;
+  }
+  bool isArray() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return (reader[reader.position()] >> 5) == 0b100;
+  }
+  bool isIndefinite() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return (reader[reader.position()] & 0b11111) == 31;
+  }
+  bool isMap() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return (reader[reader.position()] >> 5) == 0b101;
+  }
+  bool isSemanticTag() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return (reader[reader.position()] >> 5) == 0b110;
+  }
+  bool isSimple() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return ((reader[reader.position()] >> 5) == 0b110) && (!isFloatingPoint()) && (!isBreak());
+  }
+  bool isFloatingPoint() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return (reader[reader.position()] == ((0b111<<5) | 26)) || (reader[reader.position()] == ((0b111<<5) | 27));
+  }
+  bool isBreak() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    return reader[reader.position()] == 255;
+  }
+};
+
 template <>
-struct write_adapter<DataType*> : std::true_type
+struct write_adapter<DataType*> : std::true_type, write_adapter_helper<write_adapter<DataType*>>
 {
   DataType* data;
   std::size_t max_length;
@@ -168,7 +337,7 @@ struct write_adapter<DataType*> : std::true_type
 };
 
 template <>
-struct read_adapter<DataType*> : std::true_type
+struct read_adapter<DataType*> : std::true_type, read_adapter_helper<read_adapter<DataType*>>
 {
   const DataType* data;
   std::size_t max_length;
@@ -380,6 +549,7 @@ result deserializeItem(std::uint8_t& first_byte, std::uint64_t& v, Data& data)
     v = direct;
     return data.advance(1);
   }
+  CBOR_PARSE_ERROR("Unhandled first byte value: " + std::to_string(first_byte) + " at " + std::to_string(data.position()));
   return false;
 }
 
@@ -671,7 +841,7 @@ struct traits<trait_families::c_array_family, ArrayElement>
   template <typename InType, typename Data, size_t N>
   static result serializer(const InType (&d)[N], Data& data)
   {
-    result res = serializeItem(0b100, N, data);
+    result res = data.openArray(N);
     for (std::size_t i = 0; i < N; i++)
     {
       res += to_cbor(d[i], data);
@@ -685,35 +855,20 @@ struct traits<trait_families::c_array_family, ArrayElement>
   template <typename InType, typename Data, size_t N>
   static result deserializer(InType (&d)[N], Data& data)
   {
-    std::uint8_t first_byte;
-    std::uint64_t length = 0;
-    result res = deserializeItem(first_byte, length, data);
-    if (length != N)
+    result res = data.expectArray(N);
+    if (!res)
     {
-      // Treat incorrect lengths as incorrect type.
-      CBOR_TYPE_ERROR("Expected array of " + std::to_string(length) + " long, but only have array of " +
-                      std::to_string(N));
-      return false;
+      return res;
     }
-
-    std::uint8_t read_major_type = first_byte >> 5;
-    if (read_major_type == 0b100)
+    for (std::size_t i = 0; i < N; i++)
     {
-      for (std::size_t i = 0; i < length; i++)
+      res += from_cbor(d[i], data);
+      if (!res)  // if failed... abort early.
       {
-        res += from_cbor(d[i], data);
-        if (!res)  // if failed... abort early.
-        {
-          return res;
-        }
+        return res;
       }
     }
-    else
-    {
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
-                      " is different then expected type 0b100");
-      return false;
-    }
+ 
     return res;
   }
 };

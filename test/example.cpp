@@ -191,19 +191,18 @@ struct Buz
 template <typename Data>
 cbor::result to_cbor(const Buz& b, Data& data)
 {
-  std::map<std::string, cbor::cbor_object> representation;
-  representation["f"] = b.f;
-  representation["x"] = b.x;
-  return to_cbor(representation, data);
+  cbor::result res = data.openArray(2);
+  res += to_cbor(b.f, data);
+  res += to_cbor(b.x, data);
+  return res;
 }
 
 template <typename Data>
 cbor::result from_cbor(Buz& b, Data& data)
 {
-  std::map<std::string, cbor::cbor_object> representation;
-  auto res = from_cbor(representation, data);
-  representation.at("f").get_to(b.f);
-  representation.at("x").get_to(b.x);
+  cbor::result res = data.expectArray(2);
+  res += from_cbor(b.f, data);
+  res += from_cbor(b.x, data);
   return res;
 }
 }  // namespace my_namespace

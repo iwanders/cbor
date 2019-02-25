@@ -524,23 +524,18 @@ struct Bar
 template <typename Data>
 cbor::result to_cbor(const Bar& b, Data& data)
 {
-  std::array<cbor::cbor_object, 2> z;
-  z[0] = b.f;
-  z[1] = b.x;
-  return to_cbor(z, data);
+  cbor::result res = data.openArray(2);
+  res += to_cbor(b.f, data);
+  res += to_cbor(b.x, data);
+  return res;
 }
 
 template <typename Data>
 cbor::result from_cbor(Bar& b, Data& data)
 {
-  std::array<cbor::cbor_object, 2> z;
-  auto res = from_cbor(z, data);
-  auto subres = z[0].get_to(b.f);   // always ok.
-  b.x = z[1].get<decltype(b.x)>();  // if exceptions enabled.
-  if (!subres)                      // if local parsing failed, return error.
-  {
-    return subres;
-  }
+  cbor::result res = data.expectArray(2);
+  res += from_cbor(b.f, data);
+  res += from_cbor(b.x, data);
   return res;
 }
 
