@@ -47,15 +47,15 @@ Supported types plain old data types:
 - `nullptr_t`: Serializes into cbor `null` value.
 - `float`: Always 4 byte float. Doubles cannot be read into floats and vice versa. 
 - `double`: Always 8 byte double. Doubles cannot be read into floats and vice versa.
-- `d[N]`: Any C style array is serialized as a cbor array of `N` long.
+- `d[N]`: Any C style array is serialized as a cbor array of `N` long, deserialization requires fixed length array.
 
 Supported STL containers:
 - `std::vector`: Serialized into fixed length cbor array, deserialization of indefinite array supported.
 - `std::map`: Serialized into fixed length cbor map, deserialization of indefinite map supported.
-- `std::pair`: Serialized into cbor array of two long.
-- `std::tuple`: Serialized into cbor array equal to the tuple length.
+- `std::pair`: Serialized into cbor array of two long, deserialization requires fixed length array.
+- `std::tuple`: Serialized into cbor array equal to the tuple length, deserialization requires fixed length array.
 - `std::array`: Handled as `d[N]`.
-- `std::string`: Handled as `const char*`.
+- `std::string`: Handled as `const char*`. Deserialization supports 'indefinite' strings.
 
 Supported CBOR types:
 - `map`, indefinite length supported for `std::map`.
