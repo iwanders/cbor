@@ -355,7 +355,7 @@ void test_adl()
   }
 }
 
-template <typename T>
+template <typename T, typename Output=T>
 void tester(T value, const Data& expected)
 {
   std::cout << "Testing: " << type_name<T>() << " with: " << value << std::endl;
@@ -367,7 +367,7 @@ void tester(T value, const Data& expected)
   test_result(res, cbor_representation, expected);
 
   // decode back
-  T output;
+  Output output;
   res = cbor::from_cbor(output, cbor_representation);
   test_result(res, cbor_representation);
   test(output, input);
@@ -381,6 +381,7 @@ void test_pod()
   tester<std::uint32_t>(2, { 0x02 });
   tester<double>(13377.1414, { 0xFB, 0x40, 0xCA, 0x20, 0x92, 0x19, 0x65, 0x2B, 0xD4 });
   tester<float>(6.3125, { 0xFA, 0x40, 0xCA, 0x00, 0x00 });
+  //  tester<float, double>(6.3125, { 0xFA, 0x40, 0xCA, 0x00, 0x00 });
   tester<std::int32_t>(2, { 0x02 });
   tester<std::int32_t>(-2, { 0x21 });
   tester<bool>(true, { 0xF5 });

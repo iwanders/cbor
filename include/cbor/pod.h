@@ -31,6 +31,7 @@
 #pragma once
 #include <cstdint>
 #include <cstring>
+//  #include <cmath>
 #include <limits>
 #include "cbor.h"
 #include "exceptions.h"
@@ -746,8 +747,49 @@ struct traits<trait_families::signed_integer, Type>
 };
 
 template <typename T>
-struct trait_floating_point_helper
+struct trait_floating_point_helper;
+
+//  template <std::size_t T>
+//  struct trait_floating_point_converter;
+//   half-precision float: 25
+// single-precision float: 26
+// double-precision float: 27
+// long double exists, but is not in the cbor spec.
+
+
+template <>
+struct trait_floating_point_helper<std::uint16_t>
 {
+  using type = float;
+  static const std::uint8_t minor_type = 25;
+  using int_type = std::uint16_t;
+  static bool downgradable(const type /*v*/)
+  {
+    return false;
+  }
+
+  /*
+  static double decode_half(unsigned char* halfp)
+  {
+    int half = (halfp[0] << 8) + halfp[1];
+    int exp = (half >> 10) & 0x1f;
+    int mant = half & 0x3ff;
+    double val = 0;
+    if (exp == 0)
+    {
+      val = std::ldexp(mant, -24);
+    }
+    else if (exp != 31)
+    {
+      val = std::ldexp(mant + 1024, exp - 25);
+    }
+    else
+    {
+      val = mant == 0 ? INFINITY : NAN;
+    }
+    return half & 0x8000 ? -val : val;
+   }
+  */
 };
 
 template <>
@@ -756,6 +798,10 @@ struct trait_floating_point_helper<float>
   using type = float;
   static const std::uint8_t minor_type = 26;
   using int_type = std::uint32_t;
+  static bool downgradable(const type /*v*/)
+  {
+    return false;
+  }
 };
 
 template <>
@@ -764,32 +810,65 @@ struct trait_floating_point_helper<double>
   using type = double;
   static const std::uint8_t minor_type = 27;
   using int_type = std::uint64_t;
+
+  static bool downgradable(const type v)
+  {
+    return static_cast<double>(static_cast<float>(v)) == v;
+  }
 };
-// long double exists, but is not in the cbor spec.
 
 template <typename FloatingPointType>
 struct traits<trait_families::floating_point, FloatingPointType>
 {
-  using Type = FloatingPointType;
-  using Helper = trait_floating_point_helper<Type>;
+  //  using Type = FloatingPointType;
+  //  using Helper = trait_floating_point_helper<Type>;
 
-  template <typename Data>
+  template <typename Type, typename Data>
   static result serializer(const Type& v, Data& data)
   {
-    result res = serializePrimitive((0b111 << 5) | Helper::minor_type, data);
-    const std::size_t offset = data.size();
-    res += data.resize(offset + sizeof(Type));
-    if (res)
+    switch (trait_floating_point_helper<Type>::minor_type)
     {
-      auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
-      *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
+      case trait_floating_point_helper<double>::minor_type:
+        if (!trait_floating_point_helper<double>::downgradable(v))
+        {
+          using Helper = trait_floating_point_helper<double>;
+          result res = serializePrimitive((0b111 << 5) | Helper::minor_type, data);
+          const std::size_t offset = data.size();
+          res += data.resize(offset + sizeof(Helper::int_type));
+          if (res)
+          {
+            auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
+            *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
+          }
+          return res + sizeof(Type);
+        }
+        // intentional fallthrough, it's downgradable to single precision float.
+      case trait_floating_point_helper<float>::minor_type:
+        if (!trait_floating_point_helper<float>::downgradable(v))
+        {
+          using Helper = trait_floating_point_helper<float>;
+          result res = serializePrimitive((0b111 << 5) | Helper::minor_type, data);
+          const std::size_t offset = data.size();
+          res += data.resize(offset + sizeof(Helper::int_type));
+          if (res)
+          {
+            auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
+            *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
+          }
+          return res + sizeof(Type);
+        }
+        // intentional fallthrough, it's downgradable to half precision float.
+      default:
+        // downgradable to shortfloat.
+        break;
     }
-    return res + sizeof(Type);
+    return false;
   }
 
-  template <typename Data>
+  template <typename Type, typename Data>
   static result deserializer(Type& v, Data& data)
   {
+    using Helper = trait_floating_point_helper<Type>;
     std::uint8_t type;
     result res = deserializePrimitive(type, data);
     if (type == ((0b111 << 5) | Helper::minor_type))
