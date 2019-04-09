@@ -11,11 +11,6 @@ target_link_libraries(test_no_exceptions PRIVATE cbor)
 target_compile_options(test_no_exceptions PRIVATE ${CBOR_COMPILE_OPTIONS} -fno-exceptions)
 add_test(no_exceptions test_no_exceptions)
 
-add_executable(test_no_heap test_no_heap.cpp)
-target_link_libraries(test_no_heap PRIVATE cbor)
-target_compile_options(test_no_heap PRIVATE ${CBOR_COMPILE_OPTIONS}  -fno-exceptions)
-add_test(no_heap test_no_heap)
-
 add_executable(test_example example.cpp)
 target_link_libraries(test_example PRIVATE cbor)
 target_compile_options(test_example PRIVATE ${CBOR_COMPILE_OPTIONS})

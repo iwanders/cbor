@@ -381,7 +381,7 @@ void test_pod()
   tester<std::uint32_t>(2, { 0x02 });
   tester<double>(13377.1414, { 0xFB, 0x40, 0xCA, 0x20, 0x92, 0x19, 0x65, 0x2B, 0xD4 });
   tester<float>(6.3125, { 0xFA, 0x40, 0xCA, 0x00, 0x00 });
-  //  tester<float, double>(6.3125, { 0xFA, 0x40, 0xCA, 0x00, 0x00 });
+  tester<float, double>(6.3125, { 0xFA, 0x40, 0xCA, 0x00, 0x00 });
   tester<std::int32_t>(2, { 0x02 });
   tester<std::int32_t>(-2, { 0x21 });
   tester<bool>(true, { 0xF5 });
@@ -749,26 +749,27 @@ void test_appendix_a()
   test_appendix_A_decode<std::int32_t>("3903e7", -1000, true);
 
   // short double types
-  //  test_appendix_A_decode<>("f90000", 0.0, true);
-  //  test_appendix_A_decode<>("f98000", -0.0, true);
-  //  test_appendix_A_decode<>("f93c00", 1.0, true);
+  test_appendix_A_decode<>("f90000", 0.0, false);
+  test_appendix_A_decode<>("f98000", -0.0, false);
+  test_appendix_A_decode<>("f93c00", 1.0, false);
   test_appendix_A_decode<double>("fb3ff199999999999a", 1.1, true);
-  //  test_appendix_A_decode<>("f93e00", 1.0, true);
+  test_appendix_A_decode<>("f93e00", 1.5, false);
   test_appendix_A_decode<float>("fa47c35000", 100000.0, true);
   test_appendix_A_decode<float>("fa7f7fffff", 3.4028234663852886e+38, true);
   test_appendix_A_decode<double>("fb7e37e43c8800759c", 1.0e300, true);
 
-  //  test_appendix_A_decode<>("f90001", 5.960464477539063e-8, true);
-  //  test_appendix_A_decode<>("f90400", 0.00006103515625, true);
-  //  test_appendix_A_decode<>("f9c400", -4.0, true);
+  test_appendix_A_decode<>("f90001", 5.960464477539063e-8, false);
+  test_appendix_A_decode<>("f90400", 0.00006103515625, false);
+  test_appendix_A_decode<>("f9c400", -4.0, false);
   test_appendix_A_decode<double>("fbc010666666666666", -4.1, true);
-  //  test_appendix_A_decode<>("f97c00", std::numeric_limits<double>::infinity(), true);
-  //  test_appendix_A_decode<>("0xf97e00",  std::numeric_limits<double>::quiet_NaN(), true);
-  //  test_appendix_A_decode<>("0xf9fc00", -std::numeric_limits<double>::infinity(), true);
-  test_appendix_A_decode<double>("fb7ff0000000000000", std::numeric_limits<double>::infinity(), true);
+  test_appendix_A_decode<>("f97c00", std::numeric_limits<double>::infinity(), false);
+  // comparison fails, because nan != nan
+  //  test_appendix_A_decode<>("f97e00",  std::numeric_limits<double>::quiet_NaN(), false);
+  test_appendix_A_decode<>("f9fc00", -std::numeric_limits<double>::infinity(), false);
+  test_appendix_A_decode<double>("fb7ff0000000000000", std::numeric_limits<double>::infinity(), false);
   // comparison fails, because nan != nan
   //  test_appendix_A_decode<double>("fb7ff8000000000000",  std::numeric_limits<double>::quiet_NaN(), true);
-  test_appendix_A_decode<double>("fbfff0000000000000", -std::numeric_limits<double>::infinity(), true);
+  test_appendix_A_decode<double>("fbfff0000000000000", -std::numeric_limits<double>::infinity(), false);
   test_appendix_A_decode<bool>("f4", false, true);
   test_appendix_A_decode<bool>("f5", true, true);
   // can't print this.
