@@ -724,33 +724,6 @@ void test_appendix_A_decode(const std::string& hex, const Type expected, bool ro
   }
 }
 
-void test_half_precision_float()
-{
-  using HFP = cbor::detail::trait_floating_point_helper<std::uint16_t>;
-  std::cout << "0.0" << std::endl;
-  test(HFP::encode_half(0.0), 0x0000);
-  test(HFP::encode_half(std::pow(2, -24)), 0x0001);
-  std::cout << "-0.0" << std::endl;
-  test(HFP::encode_half(-0.0), 0x8000);
-  std::cout << "1.0" << std::endl;
-  test(HFP::encode_half(1.0), 0x3c00);
-  std::cout << "-2.0" << std::endl;
-  test(HFP::encode_half(-2.0), 0xc000);
-  test(HFP::encode_half(std::numeric_limits<double>::infinity()), 0x7c00);
-  test(HFP::encode_half(-std::numeric_limits<double>::infinity()), 0xfc00);
-  test(HFP::encode_half(std::numeric_limits<double>::quiet_NaN()), 0x7e00);
-  test(1, 2);
-
-  for (std::size_t i = 0; i < (1<<16); i++)
-  {
-    std::uint16_t ui = i;
-    double v = HFP::decode(reinterpret_cast<const unsigned char*>(&ui));
-    std::uint16_t enc = HFP::encode_half(v);
-    //  test(i, enc);
-    std::cout << "v: " << v << " enc: " << enc << " i: " << i <<   "   ==? " << (i == enc) << std::endl;
-  }
-}
-
 void test_appendix_a()
 {
   // https://tools.ietf.org/html/rfc7049#appendix-A
@@ -913,7 +886,6 @@ int main(int /* argc */, char** /* argv */)
   test_compound_type();
   test_result_operators();
   test_appendix_a();
-  test_half_precision_float();
   test_exceptions();
 
   if (failed)
