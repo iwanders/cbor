@@ -768,7 +768,7 @@ struct trait_floating_point_helper<std::uint16_t>
     return false;
   }
 
-  static double decode_half(const unsigned char* halfp)
+  static double decode(const unsigned char* halfp)
   {
     int half = (halfp[0] << 8) + halfp[1];
     int exp = (half >> 10) & 0x1f;
@@ -787,6 +787,49 @@ struct trait_floating_point_helper<std::uint16_t>
       val = (mant == 0) ? std::numeric_limits<double>::infinity() : std::numeric_limits<double>::quiet_NaN();
     }
     return half & 0x8000 ? -val : val;
+  }
+
+  /**
+   * @brief Convert a double into a half precision float.
+   * @note This function should only be used if the double can be exactly represented in the half precision float.
+   */
+  static std::uint16_t encode_half(const double input)
+  {
+    // https://en.wikipedia.org/wiki/Half-precision_floating-point_format
+    const std::int64_t float16_bias = 15;
+    // https://en.wikipedia.org/wiki/Double-precision_floating-point_format
+    const std::int32_t float64_bias = 1023;
+
+    if (std::isnan(input))
+    {
+      return (0b11111 << 10) | (1 << 9);
+    }
+    else if (std::isinf(input))
+    {
+      return (0b11111 << 10) | (std::signbit(input) << 15);
+    }
+
+    // It's a real number, extract the fraction and exponent from the double value.
+    const std::uint64_t& in = *reinterpret_cast<const std::uint64_t*>(&input);
+    const std::uint64_t frac = in & 0xfffffffffffff;
+    std::int32_t exp = ((in >> 52) & 0x7FF) - float64_bias;
+    if (exp > float16_bias)
+    {
+      // overflow, return inf with correct sign.
+      return (0b11111 << 10) | (std::signbit(input) << 15);
+    }
+    else if (exp > -float16_bias)
+    {
+      // normal.
+      return ((std::signbit(input)) << 15) | ((((exp + float16_bias)) << 10)) | ((frac >> (52 - 10)));
+    }
+    else if (exp >= -(14 + 10))
+    {
+      // subnormal.
+      return ((std::signbit(input)) << 15) | (((0) << 10)) | ((((frac >> (52 - 10))) | (1 << 10)) >> -(exp + 14));
+    }
+    // underflow, or zero, return 0, with correct sign.
+    return std::signbit(input) << 15;
   }
 };
 
@@ -893,7 +936,7 @@ struct traits<trait_families::floating_point, FloatingPointType>
           using Helper = trait_floating_point_helper<std::uint16_t>;
           const std::size_t offset = data.position();
           res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of bounds.
-          v = Helper::decode_half(reinterpret_cast<const unsigned char*>(&data[offset]));
+          v = Helper::decode(reinterpret_cast<const unsigned char*>(&data[offset]));
           return res;
       }
     }
