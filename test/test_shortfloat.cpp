@@ -119,24 +119,42 @@ void test_appendix_A_decode(const std::string& hex, const Type expected, bool ro
 
 
 
+double rfc_decode(const unsigned char* halfp)
+{
+  int half = (halfp[1] << 8) + halfp[0];
+  int exp = (half >> 10) & 0x1f;
+  int mant = half & 0x3ff;
+  double val = 0;
+  if (exp == 0)
+  {
+    val = std::ldexp(mant, -24);
+  }
+  else if (exp != 31)
+  {
+    val = std::ldexp(mant + 1024, exp - 25);
+  }
+  else
+  {
+    val = (mant == 0) ? std::numeric_limits<double>::infinity() : std::numeric_limits<double>::quiet_NaN();
+  }
+  return half & 0x8000 ? -val : val;
+}
 
 void test_half_precision_float()
 {
   //  return;
-  using HFP = cbor::detail::trait_floating_point_helper<std::uint16_t>;
   std::cout << "0.0" << std::endl;
-  test(HFP::encode_half(0.0), 0x0000);
-  test(HFP::encode_half(std::pow(2, -24)), 0x0001);
+  test(cbor::shortfloat::encode(0.0), 0x0000);
+  test(cbor::shortfloat::encode(std::pow(2, -24)), 0x0001);
   std::cout << "-0.0" << std::endl;
-  test(HFP::encode_half(-0.0), 0x8000);
+  test(cbor::shortfloat::encode(-0.0), 0x8000);
   std::cout << "1.0" << std::endl;
-  test(HFP::encode_half(1.0), 0x3c00);
+  test(cbor::shortfloat::encode(1.0), 0x3c00);
   std::cout << "-2.0" << std::endl;
-  test(HFP::encode_half(-2.0), 0xc000);
-  test(HFP::encode_half(std::numeric_limits<double>::infinity()), 0x7c00);
-  test(HFP::encode_half(-std::numeric_limits<double>::infinity()), 0xfc00);
-  test(HFP::encode_half(std::numeric_limits<double>::quiet_NaN()), 0x7e00);
-  test(1, 2);
+  test(cbor::shortfloat::encode(-2.0), 0xc000);
+  test(cbor::shortfloat::encode(std::numeric_limits<double>::infinity()), 0x7c00);
+  test(cbor::shortfloat::encode(-std::numeric_limits<double>::infinity()), 0xfc00);
+  test(cbor::shortfloat::encode(std::numeric_limits<double>::quiet_NaN()), 0x7e00);
 
   std::uint32_t score = 0;
   for (std::size_t i = 0; i < (1<<16); i++)
@@ -149,48 +167,39 @@ void test_half_precision_float()
     //  std::cout << "v: " << v << " enc: " << enc << " i: " << i <<   "   ==? " << (i == enc) << std::endl;
   }
   test(score, 65536U);
-  std::cout << "Score: " << score << std::endl;
 
+  std::uint32_t nan_or_inf = 0;
+  std::uint32_t value_correct = 0;
+  std::uint32_t value_incorrect = 0;
+  for (std::size_t i = 0; i < (1<<16); i++)
+  {
+    std::uint16_t ui = i;
+    float v = cbor::shortfloat::decode(ui);
+    if (std::isnan(v) || !std::isfinite(v))
+    {
+      nan_or_inf++;
+      continue;
+    }
+    double d = rfc_decode(reinterpret_cast<const unsigned char*>(&ui));
+    if (d == v)
+    {
+      value_correct += 1;
+      std::cout << " i: " << i << "v: " << v << " d: " << d << " diff: " << (d - v) << std::endl;
+    }
+    else
+    {
+      value_incorrect += 1;
+    }
+  }
+  std::cout << "Value correct: " << value_correct << std::endl;
+  std::cout << "value_incorrect: " << value_incorrect << std::endl;
+  std::cout << "nan or inf: " << nan_or_inf << std::endl;
 
-
-}
-
-void test_appendix_a()
-{
-  // https://tools.ietf.org/html/rfc7049#appendix-A
-
-  // short double types
-  test_appendix_A_decode<>("f90000", 0.0, false);
-  test_appendix_A_decode<>("f98000", -0.0, false);
-  test_appendix_A_decode<>("f93c00", 1.0, false);
-  test_appendix_A_decode<double>("fb3ff199999999999a", 1.1, true);
-  test_appendix_A_decode<>("f93e00", 1.5, false);
-  test_appendix_A_decode<float>("fa47c35000", 100000.0, true);
-  test_appendix_A_decode<float>("fa7f7fffff", 3.4028234663852886e+38, true);
-  test_appendix_A_decode<double>("fb7e37e43c8800759c", 1.0e300, true);
-
-  test_appendix_A_decode<>("f90001", 5.960464477539063e-8, false);
-  test_appendix_A_decode<>("f90400", 0.00006103515625, false);
-  test_appendix_A_decode<>("f9c400", -4.0, false);
-  test_appendix_A_decode<double>("fbc010666666666666", -4.1, true);
-  test_appendix_A_decode<>("f97c00", std::numeric_limits<double>::infinity(), false);
-  // comparison fails, because nan != nan
-  //  test_appendix_A_decode<>("f97e00",  std::numeric_limits<double>::quiet_NaN(), false);
-  test_appendix_A_decode<>("f9fc00", -std::numeric_limits<double>::infinity(), false);
-  test_appendix_A_decode<double>("fb7ff0000000000000", std::numeric_limits<double>::infinity(), false);
-  // comparison fails, because nan != nan
-  //  test_appendix_A_decode<double>("fb7ff8000000000000",  std::numeric_limits<double>::quiet_NaN(), true);
-  test_appendix_A_decode<double>("fbfff0000000000000", -std::numeric_limits<double>::infinity(), false);
-  test_appendix_A_decode<bool>("f4", false, true);
-  test_appendix_A_decode<bool>("f5", true, true);
-  // can't print this.
-  // test_appendix_A_decode<std::nullptr_t>("f6", nullptr, true);
 
 }
 
 int main(int /* argc */, char** /* argv */)
 {
-  test_appendix_a();
   test_half_precision_float();
  
   #ifdef CBOR_SUPPORT_SHOTRFLOAT
