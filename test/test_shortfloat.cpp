@@ -34,6 +34,7 @@
 //  #define CBOR_USE_EXCEPTIONS 0
 #include "cbor/stl.h"
 #include "cbor/shortfloat.h"
+#include <bitset>
 
 bool failed = false;
 std::size_t test_done = 0;
@@ -140,6 +141,20 @@ double rfc_decode(const unsigned char* halfp)
   return half & 0x8000 ? -val : val;
 }
 
+
+std::uint16_t simple_encode(const float f_in)
+{
+  const std::uint32_t& f = *reinterpret_cast<const std::uint32_t*>(&f_in);
+  return ((f>>16)&0x8000)|((((f&0x7f800000)-0x38000000)>>13)&0x7c00)|((f>>13)&0x03ff);
+}
+
+float simple_decode(const std::uint16_t h)
+{
+  std::uint32_t z = ((h&0x8000)<<16) | (((h&0x7c00)+0x1C000)<<13) | ((h&0x03FF)<<13);
+  return *reinterpret_cast<const float*>(&z);
+}
+
+
 void test_half_precision_float()
 {
   //  return;
@@ -168,34 +183,140 @@ void test_half_precision_float()
   }
   test(score, 65536U);
 
-  std::uint32_t nan_or_inf = 0;
-  std::uint32_t value_correct = 0;
-  std::uint32_t value_incorrect = 0;
-  for (std::size_t i = 0; i < (1<<16); i++)
+
   {
-    std::uint16_t ui = i;
-    float v = cbor::shortfloat::decode(ui);
-    if (std::isnan(v) || !std::isfinite(v))
+    // Compare shortfloat table implementation with rfc decode.
+    std::uint32_t nan_or_inf = 0;
+    std::uint32_t value_correct = 0;
+    std::uint32_t value_incorrect = 0;
+    for (std::size_t i = 0; i < (1<<16); i++)
     {
-      nan_or_inf++;
-      continue;
+      std::uint16_t ui = i;
+      float v = cbor::shortfloat::decode(ui);
+      if (std::isnan(v) || !std::isfinite(v))
+      {
+        nan_or_inf++;
+        continue;
+      }
+      double d = rfc_decode(reinterpret_cast<const unsigned char*>(&ui));
+      if (d == v)
+      {
+        value_correct += 1;
+        //  std::cout << " i: " << i << "v: " << v << " d: " << d << " diff: " << (d - v) << std::endl;
+      }
+      else
+      {
+        value_incorrect += 1;
+      }
     }
-    double d = rfc_decode(reinterpret_cast<const unsigned char*>(&ui));
-    if (d == v)
-    {
-      value_correct += 1;
-      std::cout << " i: " << i << "v: " << v << " d: " << d << " diff: " << (d - v) << std::endl;
-    }
-    else
-    {
-      value_incorrect += 1;
-    }
+    std::cout << "[rfc] Value correct: " << value_correct << std::endl;
+    std::cout << "[rfc] Value_incorrect: " << value_incorrect << std::endl;
+    std::cout << "[rfc] nan or inf: " << nan_or_inf << std::endl;
   }
-  std::cout << "Value correct: " << value_correct << std::endl;
-  std::cout << "value_incorrect: " << value_incorrect << std::endl;
-  std::cout << "nan or inf: " << nan_or_inf << std::endl;
+
+  {
+    // Compare shortfloat table implementation with simple_decode
+    std::uint32_t nan_or_inf = 0;
+    std::uint32_t value_correct = 0;
+    std::uint32_t value_incorrect = 0;
+    std::uint32_t encoding_correct = 0;
+    std::uint32_t encoding_incorrect = 0;
+    for (std::size_t i = 0; i < (1<<16); i++)
+    {
+      std::uint16_t ui = i;
+      float v = cbor::shortfloat::decode(ui);
+      if (std::isnan(v) || !std::isfinite(v))
+      {
+        nan_or_inf++;
+        continue;
+      }
+      double d = simple_decode(ui);
+      std::uint16_t s_ui = simple_encode(d);
+      if (s_ui == ui)
+      {
+        encoding_correct += 1;
+      }
+      else
+      {
+        encoding_incorrect += 1;
+      }
+      if (d == v)
+      {
+        value_correct += 1;
+        //  std::cout << " i: " << i << "v: " << v << " d: " << d << " diff: " << (d - v) << std::endl;
+      }
+      else
+      {
+        //  std::cout << " i: " << i << "v: " << v << " d: " << d << " diff: " << (d - v) << std::endl;
+        value_incorrect += 1;
+      }
+    }
+    std::cout << "[simple] decode correct: " << value_correct << std::endl;
+    std::cout << "[simple] decode incorrect: " << value_incorrect << std::endl;
+    std::cout << "[simple] encoding_correct: " << encoding_correct << std::endl;
+    std::cout << "[simple] encoding_incorrect: " << encoding_incorrect << std::endl;
+    std::cout << "[simple] nan or inf: " << nan_or_inf << std::endl;
+  }
 
 
+  {
+    // Try to patch simple encode.
+ 
+    auto simple_encode_fixed = [](const float f_in) -> std::uint16_t
+    {
+      const std::uint32_t& f = *reinterpret_cast<const std::uint32_t*>(&f_in);
+      const std::uint32_t exp = (f >> 23) & 0xFF;
+      const std::uint32_t frac = (f & 0x7fffff) | (1<<23);
+      if (exp == 0xFF)
+      {
+        // infinity and nan.
+        return (0b11111 << 10) | (std::signbit(f_in) << 15) | (frac >> (22 - 9));
+      }
+      else if (exp == 0)
+      {
+        // this is a zero, just copy the sign.
+        return (std::signbit(f_in) << 15);
+      }
+      else if ((exp >= 0x67) && (exp <= 0x70))
+      {
+        // subnormals.
+        const std::int32_t offset_exp = exp - 127 + 1;
+       return (std::signbit(f_in) << 15) | (frac >> -offset_exp);
+      }
+      return ((f>>16)&0x8000)|((((f&0x7f800000)-0x38000000)>>13)&0x7c00)|((f>>13)&0x03ff);
+    };
+
+    std::uint32_t nan_or_inf = 0;
+    std::uint32_t encoding_correct = 0;
+    std::uint32_t encoding_incorrect = 0;
+    for (std::size_t i = 0; i < (1<<16); i++)
+    {
+      std::uint16_t ui = i;
+      float v = cbor::shortfloat::decode(ui);
+      const std::uint32_t& f = *reinterpret_cast<const std::uint32_t*>(&v);
+      if (std::isnan(v) || !std::isfinite(v))
+      {
+        nan_or_inf++;
+        //  continue;
+      }
+      std::uint16_t s_ui = simple_encode_fixed(v);
+      float s_v = cbor::shortfloat::decode(s_ui);
+      if (s_ui == ui)
+      {
+        encoding_correct += 1;
+      }
+      else
+      {
+        encoding_incorrect += 1;
+        const std::uint32_t exp = (f >> 23) & 0xFF;
+        std::cout <<std::dec << " s_ui: " << std::bitset<16>(s_ui) << " ui: " << std::bitset<16>(ui) << std::dec << " v: " << v << " s_v: " << s_v << "  diff: " << (s_v - v) << std::hex << " f: " << f << " exp: " << exp << std::endl;
+      }
+    }
+    std::cout << std::dec;
+    std::cout << "[simple_encode_fixed] encoding_correct: " << encoding_correct << std::endl;
+    std::cout << "[simple_encode_fixed] encoding_incorrect: " << encoding_incorrect << std::endl;
+    std::cout << "[simple_encode_fixed] nan or inf: " << nan_or_inf << std::endl;
+  }
 }
 
 int main(int /* argc */, char** /* argv */)
