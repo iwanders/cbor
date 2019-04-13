@@ -281,7 +281,7 @@ void test_half_precision_float()
       {
         // subnormals.
         const std::int32_t offset_exp = exp - 127 + 1;
-       return (std::signbit(f_in) << 15) | (frac >> -offset_exp);
+        return (std::signbit(f_in) << 15) | (frac >> -offset_exp);
       }
       return ((f>>16)&0x8000)|((((f&0x7f800000)-0x38000000)>>13)&0x7c00)|((f>>13)&0x03ff);
     };
@@ -314,9 +314,70 @@ void test_half_precision_float()
     }
     std::cout << std::dec;
     std::cout << "[simple_encode_fixed] encoding_correct: " << encoding_correct << std::endl;
+    test(encoding_correct, 1U << 16);
     std::cout << "[simple_encode_fixed] encoding_incorrect: " << encoding_incorrect << std::endl;
     std::cout << "[simple_encode_fixed] nan or inf: " << nan_or_inf << std::endl;
   }
+
+  {
+    // Try to patch simple decode.
+     auto simple_decode_fixed = [](const std::uint16_t h) -> float
+    {
+      const std::uint32_t exp = (h >> 10) & 0b11111;
+      const std::uint32_t frac = (h & 0x3FF);
+      if (exp == 0b11111)
+      { // infinity and nan, set exponent to 0xFF
+        std::uint32_t z = ((h&0x8000)<<16) | (0xFF << 23) | ((h&0x03FF)<<13);
+        return *reinterpret_cast<const float*>(&z);
+      }
+      else if (exp == 0)
+      { // subnormal case; val = std::ldexp(mant, -24);
+        // The ldexp expression can be written in float logic because each short float can be exactly represented
+        // in a float. The subsequent arithmetic does not cause loss of precision.
+        // Hardcode 2**-14; hex(struct.unpack("!I", struct.pack("!f", 2**-14))[0])
+        const std::uint32_t two_power_minus_forteen_signed = 0x38800000 | (((h & 0x8000)) << 16);
+        return float(frac) / (1<<10) * *reinterpret_cast<const float*>(&two_power_minus_forteen_signed);
+      }
+      // normal case
+      std::uint32_t z = ((h&0x8000)<<16) | (((h&0x7c00)+0x1C000)<<13) | ((h&0x03FF)<<13);
+      return *reinterpret_cast<const float*>(&z);
+    };
+
+    std::uint32_t nan_or_inf = 0;
+    std::uint32_t encoding_correct = 0;
+    std::uint32_t encoding_incorrect = 0;
+    for (std::size_t i = 0; i < (1<<16); i++)
+    {
+      std::uint16_t ui = i;
+      float v = cbor::shortfloat::decode(ui);
+      float s_v = simple_decode_fixed(ui);
+      std::uint16_t s_ui = cbor::shortfloat::encode(s_v);
+      const std::uint32_t& f = *reinterpret_cast<const std::uint32_t*>(&v);
+      if (std::isnan(v) || !std::isfinite(v))
+      {
+        nan_or_inf++;
+        //  continue;
+      }
+      //  if (s_v == v)
+      if (s_ui == ui)
+      {
+        encoding_correct += 1;
+      }
+      else
+      {
+        encoding_incorrect += 1;
+        const std::uint32_t exp = (f >> 23) & 0xFF;
+        std::cout <<std::dec << " v: " << std::bitset<32>(*reinterpret_cast<const std::uint32_t*>(&v)) << " s_v: " << std::bitset<32>(*reinterpret_cast<const std::uint32_t*>(&s_v)) << std::dec << " ui: " << ui << " s_ui: " << s_ui << "  diff: " << (ui - s_ui) << std::hex << " f: " << f << " exp: " << exp << "  v: " <<  std::dec << v << std::endl;
+      }
+    }
+    std::cout << std::dec;
+    std::cout << "[simple_decode_fixed] encoding_correct: " << encoding_correct << std::endl;
+    test(encoding_correct, 1U << 16);
+    std::cout << "[simple_decode_fixed] encoding_incorrect: " << encoding_incorrect << std::endl;
+    std::cout << "[simple_decode_fixed] nan or inf: " << nan_or_inf << std::endl;
+  }
+
+
 }
 
 int main(int /* argc */, char** /* argv */)
