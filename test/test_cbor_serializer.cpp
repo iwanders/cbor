@@ -33,114 +33,7 @@
 #include <vector>
 //  #define CBOR_USE_EXCEPTIONS 0
 #include "cbor/stl.h"
-
-#include <cxxabi.h>
-#include <cstdlib>
-#include <memory>
-#include <string>
-#include <type_traits>
-#include <typeinfo>
-
-// https://stackoverflow.com/a/20170989
-template <class T>
-std::string type_name()
-{
-  typedef typename std::remove_reference<T>::type TR;
-  std::unique_ptr<char, void (*)(void*)> own(abi::__cxa_demangle(typeid(TR).name(), nullptr, nullptr, nullptr),
-                                             std::free);
-  std::string r = own != nullptr ? own.get() : typeid(TR).name();
-  if (std::is_const<TR>::value)
-    r += " const";
-  if (std::is_volatile<TR>::value)
-    r += " volatile";
-  if (std::is_lvalue_reference<T>::value)
-    r += "&";
-  else if (std::is_rvalue_reference<T>::value)
-    r += "&&";
-  return r;
-}
-
-using Data = std::vector<std::uint8_t>;
-
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& t)
-{
-  for (const auto& k : t)
-  {
-    os << k << " ";
-  }
-  return os;
-}
-
-template <typename K, typename V>
-std::ostream& operator<<(std::ostream& os, const std::map<K, V>& t)
-{
-  for (const auto& k_v : t)
-  {
-    os << "(" << k_v.first << ", " << k_v.second << ")"
-       << " ";
-  }
-  return os;
-}
-
-bool failed = false;
-std::size_t test_done = 0;
-
-template <typename A, typename B>
-void test(const A& a, const B& b, bool print = true)
-{
-  test_done++;
-  if (a != b)
-  {
-    std::cerr << "\033[31m"
-              << "a (" << a << ") != b (" << b << ")"
-              << "\033[0m" << std::endl;
-    failed = true;
-  }
-  else
-  {
-    if (print)
-    {
-      std::cerr << "\033[32m"
-                << "a (" << a << ") == b (" << b << ")"
-                << "\033[0m" << std::endl;
-    }
-  }
-}
-
-Data hexToData(std::string s)
-{
-  Data res;
-  if ((s.size() % 2) != 0)
-  {
-    throw std::runtime_error("Hex string must be an even length");
-  }
-  for (std::size_t i = 0; i < (s.size() / 2); i++)
-  {
-    std::string thing;
-    thing.resize(2);
-    thing[0] = s[i * 2];
-    thing[1] = s[i * 2 + 1];
-    res.push_back(std::strtoll(thing.data(), nullptr, 16));
-  }
-  return res;
-}
-
-template <typename A, typename B>
-void test_result(const cbor::result& res, const A& result, const B& expected)
-{
-  test(bool(res), true, false);
-  test(std::size_t(res), result.size(), false);
-  test(std::size_t(res), expected.size(), false);
-  test(cbor::hexdump(result), cbor::hexdump(expected));
-}
-
-template <typename A>
-void test_result(const cbor::result& res, const A& result)
-{
-  test(bool(res), true, false);
-  test(std::size_t(res), result.size(), false);
-}
+#include "test.h"
 
 /*
 
@@ -353,24 +246,6 @@ void test_adl()
       test(output[2].f, 4u);
     }
   }
-}
-
-template <typename T, typename Output=T>
-void tester(T value, const Data& expected)
-{
-  std::cout << "Testing: " << type_name<T>() << " with: " << value << std::endl;
-
-  // encode value into cbor.
-  const T input{ value };
-  Data cbor_representation;
-  auto res = cbor::to_cbor(input, cbor_representation);
-  test_result(res, cbor_representation, expected);
-
-  // decode back
-  Output output;
-  res = cbor::from_cbor(output, cbor_representation);
-  test_result(res, cbor_representation);
-  test(output, input);
 }
 
 void test_pod()
@@ -704,25 +579,6 @@ void test_result_operators()
   test(new_res.length, 12u);
 }
 
-template <typename Type>
-void test_appendix_A_decode(const std::string& hex, const Type expected, bool roundtrip)
-{
-  std::cout << "Testing: " << type_name<Type>() << " as(" + hex + ") expected: " << expected << std::endl;
-  // decode output
-  Type decoded;
-  const Data cbor_in = hexToData(hex);
-  std::cout << cbor::hexdump(cbor_in) << std::endl;
-  auto res = cbor::from_cbor(decoded, cbor_in);
-  test_result(res, cbor_in);
-  test(decoded, expected);
-
-  if (roundtrip)
-  {
-    Data cbor_out;
-    res = cbor::to_cbor(decoded, cbor_out);
-    test_result(res, cbor_out, cbor_in);
-  }
-}
 
 void test_appendix_a()
 {
@@ -817,22 +673,6 @@ void test_appendix_a()
   // adapted from 0x826161bf61626163ff
   test_appendix_A_decode<std::map<std::string, std::string>>("bf61626163ff", {{"b", "c"}}, false);
 
-}
-
-template <typename Error, typename Fun>
-void expect_error(Fun&& f)
-{
-  bool have_exception = false;
-  try
-  {
-    f();
-  }
-  catch (const Error& e)
-  {
-    have_exception = true;
-    std::cout << "Caught exception: " << e.what() << std::endl;
-  }
-  test(have_exception, true, false);
 }
 
 void test_exceptions()
