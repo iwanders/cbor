@@ -771,7 +771,7 @@ struct trait_floating_point_helper<std::uint16_t>
    * @brief Convert a short float into a float.
    * @param h The half float value to convert to a single precision float.
    */
-  static float decode(const std::uint16_t h)
+  static inline float decode(const std::uint16_t h)
   {
     const std::uint32_t exp = (h >> 10) & 0b11111;
     const std::uint32_t frac = (h & 0x3FF);
@@ -797,11 +797,30 @@ struct trait_floating_point_helper<std::uint16_t>
    * @brief Convert a float into a half precision float.
    * @param f_in The float to convert.
    */
-  static std::uint16_t encode(const float f_in)
+  template <bool handle_out_of_bounds=false>
+  static inline std::uint16_t encode(const float f_in)
   {
     const std::uint32_t& f = *reinterpret_cast<const std::uint32_t*>(&f_in);
     const std::uint32_t exp = (f >> 23) & 0xFF;
     const std::uint32_t frac = (f & 0x7fffff) | (1<<23);
+
+    if (handle_out_of_bounds)
+    {
+      constexpr std::uint32_t minf = 0x33800000;
+      const float min_val = *reinterpret_cast<const float*>(&minf);
+
+      if (handle_out_of_bounds && (std::abs(f_in) < min_val))
+      {
+        // Value is so small it's rounded to zero.
+        return (std::signbit(f_in) << 15);
+      }
+      else if (handle_out_of_bounds && (std::abs(f_in) >= 65536))
+      {
+        // Value is so large we round to inifinity.
+        return (0b11111 << 10) | (std::signbit(f_in) << 15);
+      }
+    }
+
     if (exp == 0xFF)
     {
       // infinity and nan.
@@ -812,7 +831,7 @@ struct trait_floating_point_helper<std::uint16_t>
       // this is a zero, just copy the sign.
       return (std::signbit(f_in) << 15);
     }
-    else if ((exp >= 0x67) && (exp <= 0x70))
+    else if (exp <= 0x70)
     {
       // subnormals.
       const std::int32_t offset_exp = exp - 127 + 1;

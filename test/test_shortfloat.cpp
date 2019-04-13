@@ -31,7 +31,6 @@
 #include <array>
 #include <iostream>
 #include <vector>
-//  #define CBOR_USE_EXCEPTIONS 0
 #include "cbor/stl.h"
 #include "shortfloat.h"
 #include <bitset>
@@ -95,16 +94,35 @@ void test_half_precision_float()
 
     // Test encodes, must exactly match the original input value.
     std::uint16_t f_to_h_table = shortfloat::encode(h_to_f_table);
-    std::uint16_t f_to_h_cbor = shortfloat::encode(h_to_f_table);
+    std::uint16_t f_to_h_cbor = FPH::encode(h_to_f_table);
     test(f_to_h_table, f_to_h_cbor, print_off);
     test(f_to_h_table, half, print_off);
   }
+
 }
+
+void test_complete_conversion_correctness()
+{
+  using FPH = cbor::detail::trait_floating_point_helper<std::uint16_t>;
+  const bool print_off = false;
+  constexpr bool handle_out_of_bounds = true;
+  // Check if the table and own implementation concur on all possible conversions.
+  for (std::size_t i = 0; i < (1UL << 32); i++)
+  {
+    std::uint32_t float_as_i = i;
+    const float f = *reinterpret_cast<const float*>(&float_as_i);
+    std::uint16_t f_to_h_table = shortfloat::encode(f);
+    std::uint16_t f_to_h_cbor = FPH::encode<handle_out_of_bounds>(f);
+    test(f_to_h_table, f_to_h_cbor, print_off);
+  }
+}
+
 
 int main(int /* argc */, char** /* argv */)
 {
   test_half_precision_float();
- 
+  test_complete_conversion_correctness();
+
   if (failed)
   {
     std::cerr << "\033[31m"
@@ -114,7 +132,7 @@ int main(int /* argc */, char** /* argv */)
   else
   {
     std::cerr << "\033[32m"
-              << "Success fully passed " << test_done << " tests."
+              << "Successfully passed " << test_done << " tests."
               << "\033[0m" << std::endl;
   }
   return failed;
