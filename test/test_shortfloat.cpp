@@ -36,6 +36,9 @@
 #include <bitset>
 #include "test.h"
 
+#include <chrono>
+#include <random>
+
 double rfc_decode(const unsigned char* halfp)
 {
   int half = (halfp[1] << 8) + halfp[0];
@@ -116,11 +119,72 @@ void test_complete_conversion_correctness()
   }
 }
 
+float get_random()
+{
+    static std::default_random_engine e;
+    static std::uniform_real_distribution<> dis(-65535, 65535);
+    return dis(e);
+}
+void compare_speed()
+{
+  using FPH = cbor::detail::trait_floating_point_helper<std::uint16_t>;
+  std::cout << "Making random numbers" << std::endl;
+  std::vector<float> v(10000000);
+  for (auto& z : v)
+  {
+    z = get_random();
+  }
+  std::cout << "Done making random numbers" << std::endl;
+
+
+  auto t1 = std::chrono::high_resolution_clock::now();
+
+  size_t iterations = 0;
+  std::uint16_t encoded;
+  float decoded;
+  {
+    for (std::size_t i = 0; i < 100; i++)
+    {
+      for (const auto& value : v)
+      {
+        encoded = FPH::encode(value);
+        decoded = FPH::decode(encoded);
+        iterations++;
+      }
+    }
+  }
+  std::cout << "encoded: " << encoded << " decoded: " << decoded << std::endl;
+
+
+  auto t2 = std::chrono::high_resolution_clock::now();
+  //  double dif = std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count();
+  std::chrono::duration<double> elapsed = t2 - t1;
+  std::cout << "FPH: time in seconds: " << elapsed.count() << " for " << iterations << " per iteration: " << (elapsed.count() / iterations) << std::endl;;
+  
+
+  t1 = std::chrono::high_resolution_clock::now();
+  iterations = 0;
+  {
+    for (std::size_t i = 0; i < 100; i++)
+    {
+      for (const auto& value : v)
+      {
+        encoded = shortfloat::encode(value);
+        decoded = shortfloat::decode(encoded);
+        iterations++;
+      }
+    }
+  }
+  t2 = std::chrono::high_resolution_clock::now();
+  elapsed = t2 - t1;
+  std::cout << "Table: time in seconds: " << elapsed.count() << " for " << iterations << " per iteration: " << (elapsed.count() / iterations) << std::endl;;
+}
 
 int main(int /* argc */, char** /* argv */)
 {
   test_half_precision_float();
-  test_complete_conversion_correctness();
+  //  test_complete_conversion_correctness();
+  compare_speed();
 
   if (failed)
   {
