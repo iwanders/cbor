@@ -326,17 +326,17 @@ void test_half_precision_float()
       const std::uint32_t exp = (h >> 10) & 0b11111;
       const std::uint32_t frac = (h & 0x3FF);
       if (exp == 0b11111)
-      { // infinity and nan, set exponent to 0xFF
-        std::uint32_t z = ((h&0x8000)<<16) | (0xFF << 23) | ((h&0x03FF)<<13);
+      { // infinity and nan, set exponent to 0xFF, copy shifted frac and sign.
+        std::uint32_t z = ((h & 0x8000) << 16) | (0xFF << 23) | (frac << 13);
         return *reinterpret_cast<const float*>(&z);
       }
       else if (exp == 0)
       { // subnormal case; val = std::ldexp(mant, -24);
-        // The ldexp expression can be written in float logic because each short float can be exactly represented
-        // in a float. The subsequent arithmetic does not cause loss of precision.
-        // Hardcode 2**-14; hex(struct.unpack("!I", struct.pack("!f", 2**-14))[0])
-        const std::uint32_t two_power_minus_forteen_signed = 0x38800000 | (((h & 0x8000)) << 16);
-        return float(frac) / (1<<10) * *reinterpret_cast<const float*>(&two_power_minus_forteen_signed);
+        // The ldexp expression can be written in one float multiplication because each short float can be exactly
+        // represented in a float. The subsequent arithmetic does not cause loss of precision.
+        // Hardcode 2**-14 / (1 << 10); hex(struct.unpack("!I", struct.pack("!f", (2**-14)/(1 <<10)))[0])
+        const std::uint32_t two_power_minus_twentyfour_signed = 0x33800000 | (((h & 0x8000)) << 16);
+        return float(frac) * *reinterpret_cast<const float*>(&two_power_minus_twentyfour_signed);
       }
       // normal case
       std::uint32_t z = ((h&0x8000)<<16) | (((h&0x7c00)+0x1C000)<<13) | ((h&0x03FF)<<13);
