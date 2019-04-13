@@ -45,8 +45,8 @@ Supported types plain old data types:
 - `std::int64_t`: Serializes into 32 bit integer if value allows.
 - `const char*`: Serializes into a cbor text string (utf-8).
 - `nullptr_t`: Serializes into cbor `null` value.
-- `float`: Always 4 byte float. Doubles cannot be read into floats and vice versa. 
-- `double`: Always 8 byte double. Doubles cannot be read into floats and vice versa.
+- `float`: Will be serialized into short float if exact. Can be read into a double.
+- `double`: Will be serialized into single precision float if exact, or short precision float if exact. Cannot be read into a float as precision is never degraded during (de)serialization.
 - `d[N]`: Any C style array is serialized as a cbor array of `N` long, deserialization requires fixed length array.
 
 Supported STL containers:
@@ -62,7 +62,7 @@ Supported CBOR types:
 - `array`, indefinite length supported for `std::vector`.
 - `signed integer`
 - `unsigned integer`
-- `double` and `float`. The 16 bit `short float` is not supported.
+- `double` and `float`, `short float` are supported. Float precision is never degraded during (de)serialization.
 - `boolean`
 - `null`
 - `text` and `byte` both treated as strings.

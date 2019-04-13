@@ -868,9 +868,6 @@ struct trait_floating_point_helper<double>
 template <typename FloatingPointType>
 struct traits<trait_families::floating_point, FloatingPointType>
 {
-  //  using Type = FloatingPointType;
-  //  using Helper = trait_floating_point_helper<Type>;
-
   template <typename Type, typename Data>
   static result serializer(const Type& v, Data& data)
   {
@@ -936,6 +933,12 @@ struct traits<trait_families::floating_point, FloatingPointType>
         {
           using Helper = trait_floating_point_helper<double>;
           const std::size_t offset = data.position();
+          if (sizeof(Type) < sizeof(Helper::int_type))
+          {
+            // Would downgrade precision, disallow this.
+            CBOR_TYPE_ERROR("Serialized type is double, this cannot be read into a float as that would lose precision.");
+            return false;
+          }
           res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of bounds.
           auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
           v = *reinterpret_cast<const Helper::type*>(&fixed);

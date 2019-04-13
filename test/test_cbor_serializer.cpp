@@ -714,6 +714,13 @@ void test_exceptions()
     auto res = cbor::from_cbor(parsed, cbor_in);
     test(bool(res), false, no_print);
   });
+
+  expect_error<cbor::type_error>([]() {  // test fail on deserializing double into float.
+    Data cbor_in = { 0xFB, 0x40, 0xCA, 0x20, 0x92, 0x19, 0x65, 0x2B, 0xD4 };
+    float parsed;
+    auto res = cbor::from_cbor(parsed, cbor_in);
+    test(bool(res), false, no_print);
+  });
 }
 
 int main(int /* argc */, char** /* argv */)
