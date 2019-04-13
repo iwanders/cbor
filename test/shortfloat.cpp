@@ -32,8 +32,6 @@
 // From "Fast Half Float Conversions" by Jeroen van der Zijp, November 2008, (Revised September 2010)
 // fasthalffloatconversion.pdf
 
-namespace cbor
-{
 namespace shortfloat
 {
 
@@ -171,5 +169,4 @@ float decode(const std::uint16_t h)
   return *reinterpret_cast<const float*>(&z);
 }
 
-}
-}
+} //  namespace shortfloat

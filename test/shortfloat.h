@@ -30,11 +30,8 @@
 #pragma once
 #include <cstdint>
 
-namespace cbor
-{
 namespace shortfloat
 {
 std::uint16_t encode(const float v);
 float decode(const std::uint16_t);
-}
-}  // namespace cbor
+} //  namespace shortfloat
