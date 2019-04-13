@@ -98,7 +98,6 @@ void test_half_precision_float()
     test(f_to_h_table, f_to_h_cbor, print_off);
     test(f_to_h_table, half, print_off);
   }
-
 }
 
 void test_complete_conversion_correctness()

@@ -762,10 +762,6 @@ struct trait_floating_point_helper<std::uint16_t>
 {
   static const std::uint8_t minor_type = 25;
   using int_type = std::uint16_t;
-  static bool downgradable(const std::uint16_t /*v*/)
-  {
-    return false;
-  }
 
   /**
    * @brief Convert a short float into a float.
@@ -806,21 +802,23 @@ struct trait_floating_point_helper<std::uint16_t>
 
     if (handle_out_of_bounds)
     {
+      // Min value is 2**-24: hex(struct.unpack("!I", struct.pack("!f", (2**-24)))[0])
       constexpr std::uint32_t minf = 0x33800000;
       const float min_val = *reinterpret_cast<const float*>(&minf);
 
-      if (handle_out_of_bounds && (std::abs(f_in) < min_val))
+      if (std::abs(f_in) < min_val)
       {
         // Value is so small it's rounded to zero.
         return (std::signbit(f_in) << 15);
       }
-      else if (handle_out_of_bounds && (std::abs(f_in) >= 65536))
+      else if (std::abs(f_in) >= 65536)
       {
         // Value is so large we round to inifinity.
         return (0b11111 << 10) | (std::signbit(f_in) << 15);
       }
     }
 
+    // No out of bounds options anymore.
     if (exp == 0xFF)
     {
       // infinity and nan.
@@ -847,9 +845,10 @@ struct trait_floating_point_helper<float>
   using type = float;
   static const std::uint8_t minor_type = 26;
   using int_type = std::uint32_t;
-  static bool downgradable(const type /*v*/)
+  static bool downgradable(const type v)
   {
-    return false;
+    using FPH = trait_floating_point_helper<std::uint16_t>;
+    return static_cast<float>(v) == FPH::decode(FPH::encode(v));
   }
 };
 
@@ -886,10 +885,10 @@ struct traits<trait_families::floating_point, FloatingPointType>
           res += data.resize(offset + sizeof(Helper::int_type));
           if (res)
           {
-            auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
+            const auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
             *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
           }
-          return res + sizeof(Type);
+          return res + sizeof(Helper::int_type);
         }
         // intentional fallthrough, it's downgradable to single precision float.
       case trait_floating_point_helper<float>::minor_type:
@@ -901,14 +900,26 @@ struct traits<trait_families::floating_point, FloatingPointType>
           res += data.resize(offset + sizeof(Helper::int_type));
           if (res)
           {
-            auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
+            const auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&v));
             *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
           }
-          return res + sizeof(Type);
+          return res + sizeof(Helper::int_type);
         }
         // intentional fallthrough, it's downgradable to half precision float.
       default:
-        // downgradable to shortfloat.
+        {
+          using Helper = trait_floating_point_helper<std::uint16_t>;
+          result res = serializePrimitive((0b111 << 5) | Helper::minor_type, data);
+          const std::size_t offset = data.size();
+          res += data.resize(offset + sizeof(Helper::int_type));
+          if (res)
+          {     
+            const auto to_store = Helper::encode(v);
+            const auto fixed = fixEndianness(to_store);
+            *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
+          }
+          return res + sizeof(Helper::int_type);
+        }
         break;
     }
     return false;
