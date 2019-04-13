@@ -267,7 +267,7 @@ struct traits<std::string>
           res += from_cbor(tmp, data);
           v.insert(v.end(), tmp.begin(), tmp.end());
         }
-        res += data.advance(1); // pop the break byte.
+        res += data.advance(1);  // pop the break byte.
         return res;
       }
       else
@@ -525,7 +525,7 @@ struct traits<std::map<KeyType, ValueType>>
           }
           v.emplace(std::move(key), std::move(value));
         }
-        res += data.advance(1); // pop the break byte.
+        res += data.advance(1);  // pop the break byte.
         return res;
       }
       else
@@ -605,12 +605,12 @@ struct traits<cbor_object>
       if (first_byte == ((0b100 << 5) | 31))
       {
         copy_to_object(start_pos, res);
-        while(data[data.position()] != 255)
+        while (data[data.position()] != 255)
         {
           res += deserializer(v, data);
         }
         copy_to_object(data.position(), 1);
-        res += data.advance(1); // remove the break.
+        res += data.advance(1);  // remove the break.
         return res;
       }
       // copy the start byte.
@@ -627,13 +627,13 @@ struct traits<cbor_object>
       if (first_byte == ((0b101 << 5) | 31))
       {
         copy_to_object(start_pos, res);
-        while(data[data.position()] != 255)
+        while (data[data.position()] != 255)
         {
           res += deserializer(v, data);
-        res += deserializer(v, data);
+          res += deserializer(v, data);
         }
         copy_to_object(data.position(), 1);
-        res += data.advance(1); // remove the break.
+        res += data.advance(1);  // remove the break.
         return res;
       }
       // copy the start...
@@ -652,12 +652,12 @@ struct traits<cbor_object>
       if ((first_byte & 0b11111) == 31)
       {
         copy_to_object(start_pos, res);
-        while(data[data.position()] != 255)
+        while (data[data.position()] != 255)
         {
           res += deserializer(v, data);
         }
         copy_to_object(data.position(), 1);
-        res += data.advance(1); // remove the break.
+        res += data.advance(1);  // remove the break.
         return res;
       }
       // append string prefix.

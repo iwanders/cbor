@@ -29,11 +29,11 @@
 */
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <iostream>
 #include <vector>
 #include "cbor/stl.h"
 #include "shortfloat.h"
-#include <bitset>
 #include "test.h"
 
 #include <chrono>
@@ -60,7 +60,6 @@ double rfc_decode(const unsigned char* halfp)
   return half & 0x8000 ? -val : val;
 }
 
-
 void test_half_precision_float()
 {
   using FPH = cbor::detail::trait_floating_point_helper<std::uint16_t>;
@@ -83,16 +82,18 @@ void test_half_precision_float()
     float h_to_f_rfc = rfc_decode(reinterpret_cast<const unsigned char*>(&half));
 
     // Own implementation must concur with shortfloat table implementation, which seems de-facto standard.
-    test(*reinterpret_cast<const std::uint32_t*>(&h_to_f_table), *reinterpret_cast<const std::uint32_t*>(&h_to_f_cbor), print_off);
+    test(*reinterpret_cast<const std::uint32_t*>(&h_to_f_table), *reinterpret_cast<const std::uint32_t*>(&h_to_f_cbor),
+         print_off);
 
     // rfc decode doesn't do fraction of nans
-    if (std::isnan(h_to_f_table))  
+    if (std::isnan(h_to_f_table))
     {
       test(std::isnan(h_to_f_table), std::isnan(h_to_f_rfc), print_off);
     }
     else
     {
-      test(*reinterpret_cast<const std::uint32_t*>(&h_to_f_table), *reinterpret_cast<const std::uint32_t*>(&h_to_f_rfc), print_off);
+      test(*reinterpret_cast<const std::uint32_t*>(&h_to_f_table), *reinterpret_cast<const std::uint32_t*>(&h_to_f_rfc),
+           print_off);
     }
 
     // Test encodes, must exactly match the original input value.
@@ -121,9 +122,9 @@ void test_complete_conversion_correctness()
 
 float get_random()
 {
-    static std::default_random_engine e;
-    static std::uniform_real_distribution<> dis(-65535, 65535);
-    return dis(e);
+  static std::default_random_engine e;
+  static std::uniform_real_distribution<> dis(-65535, 65535);
+  return dis(e);
 }
 void compare_speed()
 {
@@ -135,7 +136,6 @@ void compare_speed()
     z = get_random();
   }
   std::cout << "Done making random numbers" << std::endl;
-
 
   auto t1 = std::chrono::high_resolution_clock::now();
 
@@ -155,12 +155,12 @@ void compare_speed()
   }
   std::cout << "encoded: " << encoded << " decoded: " << decoded << std::endl;
 
-
   auto t2 = std::chrono::high_resolution_clock::now();
   //  double dif = std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count();
   std::chrono::duration<double> elapsed = t2 - t1;
-  std::cout << "FPH: time in seconds: " << elapsed.count() << " for " << iterations << " per iteration: " << (elapsed.count() / iterations) << std::endl;;
-  
+  std::cout << "FPH: time in seconds: " << elapsed.count() << " for " << iterations
+            << " per iteration: " << (elapsed.count() / iterations) << std::endl;
+  ;
 
   t1 = std::chrono::high_resolution_clock::now();
   iterations = 0;
@@ -177,7 +177,9 @@ void compare_speed()
   }
   t2 = std::chrono::high_resolution_clock::now();
   elapsed = t2 - t1;
-  std::cout << "Table: time in seconds: " << elapsed.count() << " for " << iterations << " per iteration: " << (elapsed.count() / iterations) << std::endl;;
+  std::cout << "Table: time in seconds: " << elapsed.count() << " for " << iterations
+            << " per iteration: " << (elapsed.count() / iterations) << std::endl;
+  ;
 }
 
 int main(int /* argc */, char** /* argv */)

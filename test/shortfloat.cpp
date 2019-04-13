@@ -34,7 +34,6 @@
 
 namespace shortfloat
 {
-
 struct Table
 {
   // decode
@@ -48,17 +47,17 @@ struct Table
 
   static unsigned int convertmantissa(std::uint32_t i)
   {
-    std::uint32_t m = i << 13;// Zero pad mantissa bits
-    std::uint32_t e = 0; // Zero exponent
+    std::uint32_t m = i << 13;  // Zero pad mantissa bits
+    std::uint32_t e = 0;        // Zero exponent
 
-    while(!(m & 0x00800000)) // While not normalized
+    while (!(m & 0x00800000))  // While not normalized
     {
-      e -= 0x00800000; // Decrement exponent (1<<23)
-      m <<= 1;// Shift mantissa
+      e -= 0x00800000;  // Decrement exponent (1<<23)
+      m <<= 1;          // Shift mantissa
     }
-    m &= ~0x00800000;// Clear leading 1 bit
-    e += 0x38800000;// Adjust bias ((127-14)<<23)
-    return m | e;// Return combined number
+    m &= ~0x00800000;  // Clear leading 1 bit
+    e += 0x38800000;   // Adjust bias ((127-14)<<23)
+    return m | e;      // Return combined number
   }
 
   void compute()
@@ -76,7 +75,7 @@ struct Table
       }
     }
     exponenttable[0] = 0;
-    exponenttable[32]= 0x80000000;
+    exponenttable[32] = 0x80000000;
     for (std::uint32_t i = 1; i < 31; i++)
     {
       exponenttable[i] = i << 23;
@@ -87,8 +86,8 @@ struct Table
       exponenttable[i] = 0x80000000 + ((i - 32) << 23);
     }
 
-    exponenttable[31]= 0x47800000;
-    exponenttable[63]= 0xC7800000;
+    exponenttable[31] = 0x47800000;
+    exponenttable[63] = 0xC7800000;
 
     for (std::uint32_t i = 0; i < 64; i++)
     {
@@ -104,10 +103,10 @@ struct Table
       if (e < -24)
       {
         // Very small numbers map to zero
-        basetable[i|0x000] = 0x0000;
-        basetable[i|0x100] = 0x8000;
-        shifttable[i|0x000] = 24;
-        shifttable[i|0x100] = 24;
+        basetable[i | 0x000] = 0x0000;
+        basetable[i | 0x100] = 0x8000;
+        shifttable[i | 0x000] = 24;
+        shifttable[i | 0x100] = 24;
       }
       else if (e < -14)
       {
@@ -169,4 +168,4 @@ float decode(const std::uint16_t h)
   return *reinterpret_cast<const float*>(&z);
 }
 
-} //  namespace shortfloat
+}  //  namespace shortfloat

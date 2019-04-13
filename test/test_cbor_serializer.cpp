@@ -255,8 +255,8 @@ void test_pod()
   tester<std::uint16_t>(50, { 0x18, 0x32 });
   tester<std::uint32_t>(2, { 0x02 });
   tester<double>(13377.1414, { 0xFB, 0x40, 0xCA, 0x20, 0x92, 0x19, 0x65, 0x2B, 0xD4 });
-  tester<float>(6.3125, {0xf9, 0x46, 0x50 });
-  tester<double>(6.3125, {0xf9, 0x46, 0x50 });
+  tester<float>(6.3125, { 0xf9, 0x46, 0x50 });
+  tester<double>(6.3125, { 0xf9, 0x46, 0x50 });
   tester<std::int32_t>(2, { 0x02 });
   tester<std::int32_t>(-2, { 0x21 });
   tester<bool>(true, { 0xF5 });
@@ -381,7 +381,7 @@ void test_into_object()
   }
   {
     // test copying indefinite string into object.
-    Data input = {0x7f, 0x65, 0x73, 0x74, 0x72, 0x65, 0x61, 0x64, 0x6d, 0x69, 0x6e, 0x67, 0xff};
+    Data input = { 0x7f, 0x65, 0x73, 0x74, 0x72, 0x65, 0x61, 0x64, 0x6d, 0x69, 0x6e, 0x67, 0xff };
     cbor::cbor_object cbor_representation;
     auto res = cbor::from_cbor(cbor_representation, input);
     test_result(res, cbor_representation.serialized_, input);
@@ -579,7 +579,6 @@ void test_result_operators()
   test(new_res.length, 12u);
 }
 
-
 void test_appendix_a()
 {
   // https://tools.ietf.org/html/rfc7049#appendix-A
@@ -664,15 +663,15 @@ void test_appendix_a()
   // Indefinite lengths
   test_appendix_A_decode<std::string>("7f657374726561646d696e67ff", "streaming", false);
   test_appendix_A_decode<std::vector<std::uint32_t>>("9fff", {}, false);
-  test_appendix_A_decode<std::vector<std::uint32_t>>("9f0102030405060708090a0b0c0d0e0f101112131415161718181819ff",
-  {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,  17, 18, 19, 20, 21, 22, 23,  24, 25}, false);
+  test_appendix_A_decode<std::vector<std::uint32_t>>(
+      "9f0102030405060708090a0b0c0d0e0f101112131415161718181819ff",
+      { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25 }, false);
 
   // adapted from 0x9f018202039f0405ffff
-  test_appendix_A_decode<std::vector<std::uint32_t>>("9f0405ff", {4, 5}, false);
+  test_appendix_A_decode<std::vector<std::uint32_t>>("9f0405ff", { 4, 5 }, false);
 
   // adapted from 0x826161bf61626163ff
-  test_appendix_A_decode<std::map<std::string, std::string>>("bf61626163ff", {{"b", "c"}}, false);
-
+  test_appendix_A_decode<std::map<std::string, std::string>>("bf61626163ff", { { "b", "c" } }, false);
 }
 
 void test_exceptions()

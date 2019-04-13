@@ -29,7 +29,6 @@
 */
 #pragma once
 
-
 using Data = std::vector<std::uint8_t>;
 
 #include <cxxabi.h>
@@ -83,7 +82,6 @@ std::ostream& operator<<(std::ostream& os, const std::map<K, V>& t)
   }
   return os;
 }
-
 
 template <typename A, typename B>
 void test(const A& a, const B& b, bool print = true)
@@ -141,7 +139,6 @@ void test_result(const cbor::result& res, const A& result)
   test(std::size_t(res), result.size(), false);
 }
 
-
 template <typename Type>
 void test_appendix_A_decode(const std::string& hex, const Type expected, bool roundtrip)
 {
@@ -161,8 +158,7 @@ void test_appendix_A_decode(const std::string& hex, const Type expected, bool ro
   }
 }
 
-
-template <typename T, typename Output=T>
+template <typename T, typename Output = T>
 void tester(T value, const Data& expected)
 {
   std::cout << "Testing: " << type_name<T>() << " with: " << value << std::endl;
@@ -180,7 +176,6 @@ void tester(T value, const Data& expected)
   test(output, input);
 }
 
-
 template <typename Error, typename Fun>
 void expect_error(Fun&& f)
 {
@@ -196,5 +191,3 @@ void expect_error(Fun&& f)
   }
   test(have_exception, true, false);
 }
-
-

@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.5.0)
 
 project(Cbor VERSION 0.0.1)
 
-#option(CBOR_SUPPORT_SHORTFLOAT "Enable shortfloat support, not header only." OFF)
 set(CBOR_EXPORTS "")
 
 # Actual target export.

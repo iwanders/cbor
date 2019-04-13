@@ -29,9 +29,9 @@
 */
 
 #pragma once
+#include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <cmath>
 #include <limits>
 #include "cbor.h"
 #include "exceptions.h"
@@ -40,7 +40,6 @@
 
 namespace cbor
 {
-
 /**
  * @brief Struct to conveniently convey the resulting length and success flag.
  */
@@ -140,7 +139,6 @@ struct result
 
 namespace detail
 {
-
 template <typename WriteAdapter>
 struct write_adapter_helper
 {
@@ -195,8 +193,7 @@ struct read_adapter_helper
     if (length != N)
     {
       // Treat incorrect lengths as incorrect type.
-      CBOR_TYPE_ERROR("Expected array of " + std::to_string(N) + " long, but got array of " +
-                      std::to_string(length));
+      CBOR_TYPE_ERROR("Expected array of " + std::to_string(N) + " long, but got array of " + std::to_string(length));
       return false;
     }
     std::uint8_t read_major_type = (first_byte >> 5);
@@ -276,7 +273,7 @@ struct read_adapter_helper
   bool isFloatingPoint() const
   {
     const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] == ((0b111<<5) | 26)) || (reader[reader.position()] == ((0b111<<5) | 27));
+    return (reader[reader.position()] == ((0b111 << 5) | 26)) || (reader[reader.position()] == ((0b111 << 5) | 27));
   }
   bool isBreak() const
   {
@@ -550,7 +547,8 @@ result deserializeItem(std::uint8_t& first_byte, std::uint64_t& v, Data& data)
     v = direct;
     return data.advance(1);
   }
-  CBOR_PARSE_ERROR("Unhandled first byte value: " + std::to_string(first_byte) + " at " + std::to_string(data.position()));
+  CBOR_PARSE_ERROR("Unhandled first byte value: " + std::to_string(first_byte) + " at " +
+                   std::to_string(data.position()));
   return false;
 }
 
@@ -756,7 +754,6 @@ struct trait_floating_point_helper;
 // double-precision float: 27
 // long double exists, but is not in the cbor spec.
 
-
 template <>
 struct trait_floating_point_helper<std::uint16_t>
 {
@@ -772,12 +769,12 @@ struct trait_floating_point_helper<std::uint16_t>
     const std::uint32_t exp = (h >> 10) & 0b11111;
     const std::uint32_t frac = (h & 0x3FF);
     if (exp == 0b11111)
-    { // infinity and nan, set exponent to 0xFF, copy shifted frac and sign.
+    {  // infinity and nan, set exponent to 0xFF, copy shifted frac and sign.
       std::uint32_t z = ((h & 0x8000) << 16) | (0xFF << 23) | (frac << 13);
       return *reinterpret_cast<const float*>(&z);
     }
     else if (exp == 0)
-    { // subnormal case; val = std::ldexp(mant, -24);
+    {  // subnormal case; val = std::ldexp(mant, -24);
       // The ldexp expression can be written in one float multiplication because each short float can be exactly
       // represented in a float. The subsequent arithmetic does not cause loss of precision.
       // Hardcode 2**-14 / (1 << 10); hex(struct.unpack("!I", struct.pack("!f", (2**-14)/(1 <<10)))[0])
@@ -785,7 +782,7 @@ struct trait_floating_point_helper<std::uint16_t>
       return float(frac) * *reinterpret_cast<const float*>(&two_power_minus_twentyfour_signed);
     }
     // normal case
-    std::uint32_t z = ((h&0x8000)<<16) | (((h&0x7c00)+0x1C000)<<13) | ((h&0x03FF)<<13);
+    std::uint32_t z = ((h & 0x8000) << 16) | (((h & 0x7c00) + 0x1C000) << 13) | ((h & 0x03FF) << 13);
     return *reinterpret_cast<const float*>(&z);
   }
 
@@ -793,12 +790,12 @@ struct trait_floating_point_helper<std::uint16_t>
    * @brief Convert a float into a half precision float.
    * @param f_in The float to convert.
    */
-  template <bool handle_out_of_bounds=false>
+  template <bool handle_out_of_bounds = false>
   static inline std::uint16_t encode(const float f_in)
   {
     const std::uint32_t& f = *reinterpret_cast<const std::uint32_t*>(&f_in);
     const std::uint32_t exp = (f >> 23) & 0xFF;
-    const std::uint32_t frac = (f & 0x7fffff) | (1<<23);
+    const std::uint32_t frac = (f & 0x7fffff) | (1 << 23);
 
     if (handle_out_of_bounds)
     {
@@ -835,7 +832,7 @@ struct trait_floating_point_helper<std::uint16_t>
       const std::int32_t offset_exp = exp - 127 + 1;
       return (std::signbit(f_in) << 15) | (frac >> -offset_exp);
     }
-    return ((f>>16)&0x8000)|((((f&0x7f800000)-0x38000000)>>13)&0x7c00)|((f>>13)&0x03ff);
+    return ((f >> 16) & 0x8000) | ((((f & 0x7f800000) - 0x38000000) >> 13) & 0x7c00) | ((f >> 13) & 0x03ff);
   }
 };
 
@@ -904,20 +901,20 @@ struct traits<trait_families::floating_point, FloatingPointType>
         }
         // intentional fallthrough, it's downgradable to half precision float.
       default:
+      {
+        using Helper = trait_floating_point_helper<std::uint16_t>;
+        result res = serializePrimitive((0b111 << 5) | Helper::minor_type, data);
+        const std::size_t offset = data.size();
+        res += data.resize(offset + sizeof(Helper::int_type));
+        if (res)
         {
-          using Helper = trait_floating_point_helper<std::uint16_t>;
-          result res = serializePrimitive((0b111 << 5) | Helper::minor_type, data);
-          const std::size_t offset = data.size();
-          res += data.resize(offset + sizeof(Helper::int_type));
-          if (res)
-          {     
-            const auto to_store = Helper::encode(v);
-            const auto fixed = fixEndianness(to_store);
-            *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
-          }
-          return res + sizeof(Helper::int_type);
+          const auto to_store = Helper::encode(v);
+          const auto fixed = fixEndianness(to_store);
+          *reinterpret_cast<typename Helper::int_type*>(&(data[offset])) = fixed;
         }
-        break;
+        return res + sizeof(Helper::int_type);
+      }
+      break;
     }
     return false;
   }
@@ -930,42 +927,45 @@ struct traits<trait_families::floating_point, FloatingPointType>
     switch (type)
     {
       case (((0b111 << 5) | trait_floating_point_helper<double>::minor_type)):
+      {
+        using Helper = trait_floating_point_helper<double>;
+        const std::size_t offset = data.position();
+        if (sizeof(Type) < sizeof(Helper::int_type))
         {
-          using Helper = trait_floating_point_helper<double>;
-          const std::size_t offset = data.position();
-          if (sizeof(Type) < sizeof(Helper::int_type))
-          {
-            // Would downgrade precision, disallow this.
-            CBOR_TYPE_ERROR("Serialized type is double, this cannot be read into a float as that would lose precision.");
-            return false;
-          }
-          res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of bounds.
-          auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
-          v = *reinterpret_cast<const Helper::type*>(&fixed);
-          return res;
+          // Would downgrade precision, disallow this.
+          CBOR_TYPE_ERROR("Serialized type is double, this cannot be read into a float as that would lose precision.");
+          return false;
+        }
+        res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of
+                                                        // bounds.
+        auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
+        v = *reinterpret_cast<const Helper::type*>(&fixed);
+        return res;
       }
       case (((0b111 << 5) | trait_floating_point_helper<float>::minor_type)):
-        {
-          using Helper = trait_floating_point_helper<float>;
-          const std::size_t offset = data.position();
-          res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of bounds.
-          auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
-          v = *reinterpret_cast<const Helper::type*>(&fixed);
-          return res;
+      {
+        using Helper = trait_floating_point_helper<float>;
+        const std::size_t offset = data.position();
+        res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of
+                                                        // bounds.
+        auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
+        v = *reinterpret_cast<const Helper::type*>(&fixed);
+        return res;
       }
       case (((0b111 << 5) | trait_floating_point_helper<std::uint16_t>::minor_type)):
-        {
-          using Helper = trait_floating_point_helper<std::uint16_t>;
-          const std::size_t offset = data.position();
-          res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of bounds.
-          auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
-          v = Helper::decode(fixed);
-          return res;
+      {
+        using Helper = trait_floating_point_helper<std::uint16_t>;
+        const std::size_t offset = data.position();
+        res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of
+                                                        // bounds.
+        auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
+        v = Helper::decode(fixed);
+        return res;
       }
     }
     // type error.
-    CBOR_TYPE_ERROR("Parsed type " + std::to_string(type | 0b1111) + " is not a float type, expected: " +
-                    std::to_string(trait_floating_point_helper<Type>::minor_type));
+    CBOR_TYPE_ERROR("Parsed type " + std::to_string(type | 0b1111) +
+                    " is not a float type, expected: " + std::to_string(trait_floating_point_helper<Type>::minor_type));
     return false;
   }
 };
@@ -1027,7 +1027,7 @@ struct traits<trait_families::c_array_family, ArrayElement>
         return res;
       }
     }
- 
+
     return res;
   }
 };
