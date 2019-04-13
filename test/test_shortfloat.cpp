@@ -33,7 +33,7 @@
 #include <vector>
 //  #define CBOR_USE_EXCEPTIONS 0
 #include "cbor/stl.h"
-#include "cbor/shortfloat.h"
+#include "shortfloat.h"
 #include <bitset>
 
 bool failed = false;

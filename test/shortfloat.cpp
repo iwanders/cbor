@@ -28,9 +28,7 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <cbor/shortfloat.h>
-#include <iostream>
-
+#include "shortfloat.h"
 // From "Fast Half Float Conversions" by Jeroen van der Zijp, November 2008, (Revised September 2010)
 // fasthalffloatconversion.pdf
 
@@ -67,7 +65,6 @@ struct Table
 
   void compute()
   {
-    std::cout << "Compute" << std::endl;
     mantissatable[0] = 0;
     for (std::uint32_t i = 1; i < 2048; i++)
     {

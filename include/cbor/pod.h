@@ -760,7 +760,6 @@ struct trait_floating_point_helper;
 template <>
 struct trait_floating_point_helper<std::uint16_t>
 {
-  //  using type = float;
   static const std::uint8_t minor_type = 25;
   using int_type = std::uint16_t;
   static bool downgradable(const std::uint16_t /*v*/)
@@ -768,68 +767,58 @@ struct trait_floating_point_helper<std::uint16_t>
     return false;
   }
 
-  static double decode(const unsigned char* halfp)
+  /**
+   * @brief Convert a short float into a float.
+   * @param h The half float value to convert to a single precision float.
+   */
+  static float decode(const std::uint16_t h)
   {
-    int half = (halfp[0] << 8) + halfp[1];
-    int exp = (half >> 10) & 0x1f;
-    int mant = half & 0x3ff;
-    double val = 0;
-    if (exp == 0)
-    {
-      val = std::ldexp(mant, -24);
+    const std::uint32_t exp = (h >> 10) & 0b11111;
+    const std::uint32_t frac = (h & 0x3FF);
+    if (exp == 0b11111)
+    { // infinity and nan, set exponent to 0xFF, copy shifted frac and sign.
+      std::uint32_t z = ((h & 0x8000) << 16) | (0xFF << 23) | (frac << 13);
+      return *reinterpret_cast<const float*>(&z);
     }
-    else if (exp != 31)
-    {
-      val = std::ldexp(mant + 1024, exp - 25);
+    else if (exp == 0)
+    { // subnormal case; val = std::ldexp(mant, -24);
+      // The ldexp expression can be written in one float multiplication because each short float can be exactly
+      // represented in a float. The subsequent arithmetic does not cause loss of precision.
+      // Hardcode 2**-14 / (1 << 10); hex(struct.unpack("!I", struct.pack("!f", (2**-14)/(1 <<10)))[0])
+      const std::uint32_t two_power_minus_twentyfour_signed = 0x33800000 | (((h & 0x8000)) << 16);
+      return float(frac) * *reinterpret_cast<const float*>(&two_power_minus_twentyfour_signed);
     }
-    else
-    {
-      val = (mant == 0) ? std::numeric_limits<double>::infinity() : std::numeric_limits<double>::quiet_NaN();
-    }
-    return half & 0x8000 ? -val : val;
+    // normal case
+    std::uint32_t z = ((h&0x8000)<<16) | (((h&0x7c00)+0x1C000)<<13) | ((h&0x03FF)<<13);
+    return *reinterpret_cast<const float*>(&z);
   }
 
   /**
-   * @brief Convert a double into a half precision float.
-   * @note This function should only be used if the double can be exactly represented in the half precision float.
+   * @brief Convert a float into a half precision float.
+   * @param f_in The float to convert.
    */
-  static std::uint16_t encode_half(const double input)
+  static std::uint16_t encode(const float f_in)
   {
-    // https://en.wikipedia.org/wiki/Half-precision_floating-point_format
-    const std::int64_t float16_bias = 15;
-    // https://en.wikipedia.org/wiki/Double-precision_floating-point_format
-    const std::int32_t float64_bias = 1023;
-
-    if (std::isnan(input))
+    const std::uint32_t& f = *reinterpret_cast<const std::uint32_t*>(&f_in);
+    const std::uint32_t exp = (f >> 23) & 0xFF;
+    const std::uint32_t frac = (f & 0x7fffff) | (1<<23);
+    if (exp == 0xFF)
     {
-      return (0b11111 << 10) | (1 << 9);
+      // infinity and nan.
+      return (0b11111 << 10) | (std::signbit(f_in) << 15) | (frac >> (22 - 9));
     }
-    else if (std::isinf(input))
+    else if (exp == 0)
     {
-      return (0b11111 << 10) | (std::signbit(input) << 15);
+      // this is a zero, just copy the sign.
+      return (std::signbit(f_in) << 15);
     }
-
-    // It's a real number, extract the fraction and exponent from the double value.
-    const std::uint64_t& in = *reinterpret_cast<const std::uint64_t*>(&input);
-    const std::uint64_t frac = in & 0xfffffffffffff;
-    std::int32_t exp = ((in >> 52) & 0x7FF) - float64_bias;
-    if (exp > float16_bias)
+    else if ((exp >= 0x67) && (exp <= 0x70))
     {
-      // overflow, return inf with correct sign.
-      return (0b11111 << 10) | (std::signbit(input) << 15);
+      // subnormals.
+      const std::int32_t offset_exp = exp - 127 + 1;
+      return (std::signbit(f_in) << 15) | (frac >> -offset_exp);
     }
-    else if (exp > -float16_bias)
-    {
-      // normal.
-      return ((std::signbit(input)) << 15) | ((((exp + float16_bias)) << 10)) | ((frac >> (52 - 10)));
-    }
-    else if (exp >= -(14 + 10))
-    {
-      // subnormal.
-      return ((std::signbit(input)) << 15) | (((0) << 10)) | ((((frac >> (52 - 10))) | (1 << 10)) >> -(exp + 14));
-    }
-    // underflow, or zero, return 0, with correct sign.
-    return std::signbit(input) << 15;
+    return ((f>>16)&0x8000)|((((f&0x7f800000)-0x38000000)>>13)&0x7c00)|((f>>13)&0x03ff);
   }
 };
 
@@ -936,7 +925,8 @@ struct traits<trait_families::floating_point, FloatingPointType>
           using Helper = trait_floating_point_helper<std::uint16_t>;
           const std::size_t offset = data.position();
           res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of bounds.
-          v = Helper::decode(reinterpret_cast<const unsigned char*>(&data[offset]));
+          auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
+          v = Helper::decode(fixed);
           return res;
       }
     }

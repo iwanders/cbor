@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5.0)
 
 project(Cbor VERSION 0.0.1)
 
-option(CBOR_SUPPORT_SHORTFLOAT "Enable shortfloat support, not header only." OFF)
+#option(CBOR_SUPPORT_SHORTFLOAT "Enable shortfloat support, not header only." OFF)
 set(CBOR_EXPORTS "")
 
 # Actual target export.
@@ -16,20 +16,6 @@ add_library(Cbor::cbor ALIAS cbor)
 target_compile_features(cbor INTERFACE cxx_relaxed_constexpr)
 list(APPEND CBOR_EXPORTS cbor)
 
-if (CBOR_SUPPORT_SHORTFLOAT)
-  add_library(cbor_shortfloat STATIC src/shortfloat.cpp)
-  target_include_directories(cbor_shortfloat
-    PRIVATE
-      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/include/>
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  )
-  target_link_libraries(cbor INTERFACE cbor_shortfloat)
-  list(APPEND CBOR_EXPORTS cbor_shortfloat)
-  target_compile_definitions(cbor
-    INTERFACE
-      CBOR_SUPPORT_SHOTRFLOAT
-  )
-endif()
 
 # testing
 include(CTest)

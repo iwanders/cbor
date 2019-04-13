@@ -17,7 +17,7 @@ target_compile_options(test_example PRIVATE ${CBOR_COMPILE_OPTIONS})
 add_test(example test_example)
 
 if (CBOR_SUPPORT_SHORTFLOAT)
-add_executable(test_shortfloat test_shortfloat.cpp)
+add_executable(test_shortfloat test_shortfloat.cpp shortfloat.cpp)
 target_link_libraries(test_shortfloat PRIVATE cbor)
 target_compile_options(test_shortfloat PRIVATE ${CBOR_COMPILE_OPTIONS})
 endif()
