@@ -44,7 +44,7 @@ namespace cbor
 {
 using Data = std::vector<DataType>;
 
-std::ostream& operator<<(std::ostream& out, const result& res)
+inline std::ostream& operator<<(std::ostream& out, const result& res)
 {
   std::stringstream ss;
   ss << "(success: " << std::boolalpha << res.success << ", length: " << res.length << ")";
@@ -125,7 +125,7 @@ struct read_adapter<Data> : std::true_type, read_adapter_helper<read_adapter<Dat
 };
 }  // namespace detail
 
-std::string hexdump(const DataType* d, std::size_t length)
+inline std::string hexdump(const DataType* d, std::size_t length)
 {
   std::stringstream ss;
   for (std::size_t i = 0; i < length; i++)
@@ -135,6 +135,7 @@ std::string hexdump(const DataType* d, std::size_t length)
   return ss.str();
 }
 
+template <typename Data>
 std::string hexdump(const Data& d)
 {
   return hexdump(d.data(), d.size());
@@ -200,10 +201,11 @@ public:
     return serialized_[pos];
   }
 
-  std::string prettyPrint(std::size_t indent = 0) const;
+  inline std::string prettyPrint(std::size_t indent = 0) const;
 };
 
-std::string hexdump(const cbor_object& d)
+
+inline std::string hexdump(const cbor_object& d)
 {
   return hexdump(d.serialized_);
 }

@@ -66,6 +66,7 @@ void start()
     std::size_t cbor_length = result;
     std::cout << "Serialization result: " << bool(result) << " length: " << cbor_length << std::endl;
     std::cout << "cbor representation is: " << printData(cbor_repr) << std::endl;
+    std::cout << "Result has a stream operator: " << result << std::endl;
 
     // Minimal standard deserialization use case:
     std::vector<int> parsed;
