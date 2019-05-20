@@ -581,14 +581,18 @@ struct traits<cbor_object>
   {
     //  Just copy the approppriate chunks into the object....
     std::size_t start_pos = data.position();
-    std::uint8_t first_byte;
-    std::uint64_t value;
+    std::uint8_t first_byte = 0;
+    std::uint64_t value = 0;
     result res = deserializeItem(first_byte, value, data);
     std::uint8_t major_type = first_byte >> 5;
+    if (!res)
+    {
+      return res;
+    }
 
     auto copy_to_object = [&v, &data](std::size_t start, std::size_t length) {
-      v.serialized_.reserve(v.serialized_.size() + length);
-      for (std::size_t i = start; i < (start + length); i++)
+      //  v.serialized_.reserve(v.serialized_.size() + length);
+      for (std::size_t i = start; (i < (start + length)) && (i < data.size()); i++)
       {
         v.serialized_.emplace_back(data[i]);
       }
@@ -607,9 +611,14 @@ struct traits<cbor_object>
       if (first_byte == ((0b100 << 5) | 31))
       {
         copy_to_object(start_pos, res);
-        while (data[data.position()] != 255)
+        std::uint8_t next_value = 0;
+        while (data.peek(next_value) && (next_value != 255))
         {
           res += deserializer(v, data);
+          if (!res)
+          {
+            break;
+          }
         }
         copy_to_object(data.position(), 1);
         res += data.advance(1);  // remove the break.
@@ -620,6 +629,10 @@ struct traits<cbor_object>
       for (std::size_t i = 0; i < value; i++)
       {
         res += deserializer(v, data);
+        if (!res)
+        {
+          break;
+        }
       }
     }
 
@@ -629,10 +642,15 @@ struct traits<cbor_object>
       if (first_byte == ((0b101 << 5) | 31))
       {
         copy_to_object(start_pos, res);
-        while (data[data.position()] != 255)
+        std::uint8_t next_value = 0;
+        while (data.peek(next_value) && (next_value != 255))
         {
           res += deserializer(v, data);
           res += deserializer(v, data);
+          if (!res)
+          {
+            break;
+          }
         }
         copy_to_object(data.position(), 1);
         res += data.advance(1);  // remove the break.
@@ -644,6 +662,10 @@ struct traits<cbor_object>
       {
         res += deserializer(v, data);
         res += deserializer(v, data);
+        if (!res)
+        {
+          break;
+        }
       }
     }
 
@@ -654,9 +676,14 @@ struct traits<cbor_object>
       if ((first_byte & 0b11111) == 31)
       {
         copy_to_object(start_pos, res);
-        while (data[data.position()] != 255)
+        std::uint8_t next_value = 0;
+        while (data.peek(next_value) && (next_value != 255))
         {
           res += deserializer(v, data);
+          if (!res)
+          {
+            break;
+          }
         }
         copy_to_object(data.position(), 1);
         res += data.advance(1);  // remove the break.

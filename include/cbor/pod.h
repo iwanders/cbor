@@ -280,6 +280,18 @@ struct read_adapter_helper
     const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
     return reader[reader.position()] == 255;
   }
+
+  bool peek(std::uint8_t& value) const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    if (reader.position() < reader.size())
+    {
+      value = reader[reader.position()];
+      return true;
+    }
+    return false;
+  }
+
 };
 
 template <>
@@ -356,10 +368,12 @@ struct read_adapter<DataType*> : std::true_type, read_adapter_helper<read_adapte
   read_adapter<DataType*>(const DataType* d, const T size) : data{ d }, max_length{ size }
   {
   }
+
   std::size_t position() const
   {
     return cursor;
   }
+
   result advance(std::size_t count)
   {
     cursor += count;
@@ -494,9 +508,14 @@ result serializeItem(const std::uint8_t major_type, const std::uint64_t v, Data&
 template <typename Data>
 result deserializeItem(std::uint8_t& first_byte, std::uint64_t& v, Data& data)
 {
-  first_byte = data[data.position()];
-  std::uint8_t direct = data[data.position()] & 0b11111;
   std::size_t offset = data.position();
+
+  // Reading the byte would mean out of bounds.
+  if (!data.peek(first_byte))
+  {
+    return false;
+  }
+  std::uint8_t direct = first_byte & 0b11111;
   if (direct < 24)
   {
     v = direct;

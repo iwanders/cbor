@@ -20,3 +20,21 @@ add_executable(test_shortfloat test_shortfloat.cpp shortfloat.cpp)
 target_link_libraries(test_shortfloat PRIVATE cbor)
 target_compile_options(test_shortfloat PRIVATE ${CBOR_COMPILE_OPTIONS})
 add_test(shortfloat test_shortfloat)
+
+# Something like:
+# clang++-7 -g -fsanitize=address,fuzzer ../cbor/test/test_fuzzer.cpp -I../cbor/include/
+add_custom_target(test_fuzzer COMMAND ${CMAKE_CXX_COMPILER} "-g" "-fsanitize=address,fuzzer" #"-fprofile-instr-generate" "-fcoverage-mapping "
+                                                            "-I${CMAKE_CURRENT_SOURCE_DIR}/../include/"
+                                                            "${CMAKE_CURRENT_SOURCE_DIR}/test_fuzzer.cpp"
+                                                            "-o" "${CMAKE_CURRENT_BINARY_DIR}/test_fuzzer"
+                  COMMENT "This is the fuzzer test")
+#add_executable(test_fuzzer test_fuzzer.cpp)
+#target_link_libraries(test_fuzzer PRIVATE cbor)
+#target_compile_options(test_fuzzer PRIVATE "${CBOR_COMPILE_OPTIONS};-fsanitize=address,fuzzer;-ffunction-sections")
+#set_target_properties( test_fuzzer PROPERTIES  LINK_FLAGS "-Wl,-gc-sections;")
+#add_test(fuzzer test_fuzzer)
+
+add_executable(test_fuzz_input test_fuzz_input.cpp)
+target_link_libraries(test_fuzz_input PRIVATE cbor)
+target_compile_options(test_fuzz_input PRIVATE ${CBOR_COMPILE_OPTIONS})
+add_test(fuzz_input test_fuzz_input)
