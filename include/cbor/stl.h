@@ -191,6 +191,11 @@ public:
   {
     return 0;
   }
+  std::size_t size() const
+  {
+    return serialized_.size();
+  }
+
   const DataType& operator[](std::size_t pos) const
   {
     if (pos > serialized_.size())
@@ -263,11 +268,15 @@ struct traits<std::string>
     {
       if ((first_byte & 0b11111) == 31)
       {
-        while (data[data.position()] != 255)
+        while (!data.isBreak())
         {
           Type tmp;
           res += from_cbor(tmp, data);
           v.insert(v.end(), tmp.begin(), tmp.end());
+          if (!res)
+          {
+            return res;
+          }
         }
         res += data.advance(1);  // pop the break byte.
         return res;
@@ -343,7 +352,11 @@ struct traits<std::vector<T>>
     {
       std::size_t length;
       res += data.readLength(length);
-      v.reserve(length);
+      if (!res)
+      {
+        return res;
+      }
+      //  v.reserve(length);
       for (std::size_t i = 0; i < length; i++)
       {
         typename Type::value_type tmp;
@@ -506,51 +519,48 @@ struct traits<std::map<KeyType, ValueType>>
   template <typename Data>
   static result deserializer(Type& v, Data& data)
   {
-    std::uint8_t first_byte;
-    std::uint64_t length;
-    result res = deserializeItem(first_byte, length, data);
-    std::uint8_t read_major_type = first_byte >> 5;
-    if (read_major_type == 0b101)
+    if (!data.isMap())
     {
-      // it is a map!
-      if ((first_byte & 0b11111) == 31)
-      {
-        while (data[data.position()] != 255)
-        {
-          typename Type::key_type key;
-          typename Type::mapped_type value;
-          res += from_cbor(key, data);
-          res += from_cbor(value, data);
-          if (!res)
-          {
-            return res;
-          }
-          v.emplace(std::move(key), std::move(value));
-        }
-        res += data.advance(1);  // pop the break byte.
-        return res;
-      }
-      else
-      {
-        for (std::size_t i = 0; i < length; i++)
-        {
-          typename Type::key_type key;
-          typename Type::mapped_type value;
-          res += from_cbor(key, data);
-          res += from_cbor(value, data);
-          v.emplace(std::move(key), std::move(value));
-          if (!res)
-          {
-            return res;
-          }
-        }
-      }
-    }
-    else
-    {
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+      std::uint8_t peeked;
+      data.peek(peeked);
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) +
                       " is different then expected type 0b101");
       return false;
+    }
+    if (data.isIndefinite())
+    {
+      auto res = data.readIndefiniteMap();
+      while (!data.isBreak())
+      {
+        typename Type::key_type key;
+        typename Type::mapped_type value;
+        res += from_cbor(key, data);
+        res += from_cbor(value, data);
+        if (!res)
+        {
+          return res;
+        }
+        v.emplace(std::move(key), std::move(value));
+      }
+      return res + data.readBreak(); // pop the break byte.
+    }
+
+    std::size_t length;
+    auto res = data.readLength(length);
+    if (res)
+    {
+      for (std::size_t i = 0; i < length; i++)
+      {
+        typename Type::key_type key;
+        typename Type::mapped_type value;
+        res += from_cbor(key, data);
+        res += from_cbor(value, data);
+        if (!res)
+        {
+          return res;
+        }
+        v.emplace(std::move(key), std::move(value));
+      }
     }
     return res;
   }
@@ -581,121 +591,66 @@ struct traits<cbor_object>
   {
     //  Just copy the approppriate chunks into the object....
     std::size_t start_pos = data.position();
-    std::uint8_t first_byte = 0;
-    std::uint64_t value = 0;
-    result res = deserializeItem(first_byte, value, data);
-    std::uint8_t major_type = first_byte >> 5;
-    if (!res)
-    {
-      return res;
-    }
-
-    auto copy_to_object = [&v, &data](std::size_t start, std::size_t length) {
-      //  v.serialized_.reserve(v.serialized_.size() + length);
-      for (std::size_t i = start; (i < (start + length)) && (i < data.size()); i++)
+    
+    auto copy_to_object = [&v, &data, &start_pos](const result& res) {
+      if (res)
       {
-        v.serialized_.emplace_back(data[i]);
+        for (std::size_t i = start_pos; (i < (start_pos + std::size_t(res))) && (i < data.size()); i++)
+        {
+          v.serialized_.emplace_back(data[i]);
+        }
       }
-      return length;
+      return res;
     };
 
-    // simple fixed length and built in types:
-    if ((major_type == 0b000) || (major_type == 0b001) || (major_type == 0b111))
+    if (data.isUnsignedInt())
     {
-      return copy_to_object(start_pos, res);
+      std::uint64_t z;
+      return copy_to_object(from_cbor(z, data));
     }
 
-    if (major_type == 0b100)
+    if (data.isSignedInt())
     {
-      // array.
-      if (first_byte == ((0b100 << 5) | 31))
-      {
-        copy_to_object(start_pos, res);
-        std::uint8_t next_value = 0;
-        while (data.peek(next_value) && (next_value != 255))
-        {
-          res += deserializer(v, data);
-          if (!res)
-          {
-            break;
-          }
-        }
-        copy_to_object(data.position(), 1);
-        res += data.advance(1);  // remove the break.
-        return res;
-      }
-      // copy the start byte.
-      copy_to_object(start_pos, res);
-      for (std::size_t i = 0; i < value; i++)
-      {
-        res += deserializer(v, data);
-        if (!res)
-        {
-          break;
-        }
-      }
+      std::int64_t z;
+      return copy_to_object(from_cbor(z, data));
     }
 
-    if (major_type == 0b101)
+
+    if (data.isFloatingPoint())
     {
-      // map.
-      if (first_byte == ((0b101 << 5) | 31))
-      {
-        copy_to_object(start_pos, res);
-        std::uint8_t next_value = 0;
-        while (data.peek(next_value) && (next_value != 255))
-        {
-          res += deserializer(v, data);
-          res += deserializer(v, data);
-          if (!res)
-          {
-            break;
-          }
-        }
-        copy_to_object(data.position(), 1);
-        res += data.advance(1);  // remove the break.
-        return res;
-      }
-      // copy the start...
-      copy_to_object(start_pos, res);
-      for (std::size_t i = 0; i < value; i++)
-      {
-        res += deserializer(v, data);
-        res += deserializer(v, data);
-        if (!res)
-        {
-          break;
-        }
-      }
+      double z;
+      return copy_to_object(from_cbor(z, data));
+    }
+
+    if (data.isSimple())
+    {
+      std::uint64_t z;
+      std::uint8_t first_byte;
+      return copy_to_object(deserializeItem(first_byte, z, data));
+    }
+
+    if (data.isArray())
+    {
+      std::vector<cbor_object> z;
+      auto res = from_cbor(z, data);
+      return copy_to_object(res);
+    }
+
+    if (data.isMap())
+    {
+      std::map<cbor_object, cbor_object> z;
+      return copy_to_object(from_cbor(z, data));
     }
 
     // String-esque
-    if ((major_type == 0b010) || (major_type == 0b011))
+    if (data.isText() || data.isBytes())
     {
-      // array.
-      if ((first_byte & 0b11111) == 31)
-      {
-        copy_to_object(start_pos, res);
-        std::uint8_t next_value = 0;
-        while (data.peek(next_value) && (next_value != 255))
-        {
-          res += deserializer(v, data);
-          if (!res)
-          {
-            break;
-          }
-        }
-        copy_to_object(data.position(), 1);
-        res += data.advance(1);  // remove the break.
-        return res;
-      }
-      // append string prefix.
-      copy_to_object(start_pos, res);
-      // copy the string.
-      copy_to_object(start_pos + res, value);
-      res += data.advance(value);
+      std::string z;
+      return copy_to_object(from_cbor(z, data));
     }
-    return res;
+
+    // maybe throw?
+    return false;
   }
 };
 

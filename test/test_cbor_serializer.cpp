@@ -386,6 +386,13 @@ void test_into_object()
     auto res = cbor::from_cbor(cbor_representation, input);
     test_result(res, cbor_representation.serialized_, input);
   }
+  {
+    // test copying with simple true and false
+    Data input = { 0x82, 0xF5, 0xF4};
+    cbor::cbor_object cbor_representation;
+    auto res = cbor::from_cbor(cbor_representation, input);
+    test_result(res, cbor_representation.serialized_, input);
+  }
 }
 
 namespace compound_type

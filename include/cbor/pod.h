@@ -170,14 +170,40 @@ struct read_adapter_helper
     std::uint8_t first_byte;
     return deserializeItem(first_byte, length, reader);
   }
+  bool peek(std::uint8_t& value) const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    if (reader.position() < reader.size())
+    {
+      value = reader[reader.position()];
+      return true;
+    }
+    return false;
+  }
+
 
   result expectArray() const
   {
     const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    std::uint8_t read_major_type = (reader[reader.position()] >> 5);
-    if (read_major_type != 0b100)
+    if (!isArray())
     {
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(read_major_type) +
+      std::uint8_t peeked;
+      reader.peek(peeked);
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) +
+                      " is different then expected type 0b100");
+      return false;
+    }
+    return true;
+  }
+
+  result expectMap() const
+  {
+    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+    if (!isMap())
+    {
+      std::uint8_t peeked;
+      reader.peek(peeked);
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) +
                       " is different then expected type 0b100");
       return false;
     }
@@ -215,6 +241,15 @@ struct read_adapter_helper
     return res;
   }
 
+  result readIndefiniteMap()
+  {
+    ReadAdapter& reader = *static_cast<ReadAdapter*>(this);
+    result res = expectMap();
+    res += isIndefinite();
+    res += reader.advance(1);
+    return res;
+  }
+
   result readBreak()
   {
     ReadAdapter& reader = *static_cast<ReadAdapter*>(this);
@@ -225,69 +260,114 @@ struct read_adapter_helper
     return false;
   }
 
+
   bool isUnsignedInt() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] >> 5) == 0b000;
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return (v >> 5) == 0b000;
+    }
+    return false;
   }
   bool isSignedInt() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] >> 5) == 0b001;
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return (v >> 5) == 0b001;
+    }
+    return false;
   }
   bool isBytes() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] >> 5) == 0b010;
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return (v >> 5) == 0b010;
+    }
+    return false;
   }
   bool isText() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] >> 5) == 0b011;
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return (v >> 5) == 0b011;
+    }
+    return false;
   }
   bool isArray() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] >> 5) == 0b100;
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return (v >> 5) == 0b100;
+    }
+    return false;
   }
   bool isIndefinite() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] & 0b11111) == 31;
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return (v & 0b11111) == 31;
+    }
+    return false;
   }
   bool isMap() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] >> 5) == 0b101;
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return (v >> 5) == 0b101;
+    }
+    return false;
   }
   bool isSemanticTag() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] >> 5) == 0b110;
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return (v >> 5) == 0b110;
+    }
+    return false;
   }
   bool isSimple() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return ((reader[reader.position()] >> 5) == 0b110) && (!isFloatingPoint()) && (!isBreak());
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return ((v >> 5) == 0b111) && (!isFloatingPoint()) && (!isBreak());
+    }
+    return false;
   }
   bool isFloatingPoint() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return (reader[reader.position()] == ((0b111 << 5) | 26)) || (reader[reader.position()] == ((0b111 << 5) | 27));
+    std::uint8_t v;
+    if (peek(v))
+    {
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return (v == ((0b111 << 5) | 26)) || (v == ((0b111 << 5) | 27));
+    }
+    return false;
   }
   bool isBreak() const
   {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    return reader[reader.position()] == 255;
-  }
-
-  bool peek(std::uint8_t& value) const
-  {
-    const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
-    if (reader.position() < reader.size())
+    std::uint8_t v;
+    if (peek(v))
     {
-      value = reader[reader.position()];
-      return true;
+      //  const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
+      return v == 255;
     }
     return false;
   }
@@ -957,6 +1037,10 @@ struct traits<trait_families::floating_point, FloatingPointType>
         }
         res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of
                                                         // bounds.
+        if (!res)
+        {
+          return res;
+        }
         auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
         v = *reinterpret_cast<const Helper::type*>(&fixed);
         return res;
@@ -967,6 +1051,10 @@ struct traits<trait_families::floating_point, FloatingPointType>
         const std::size_t offset = data.position();
         res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of
                                                         // bounds.
+        if (!res)
+        {
+          return res;
+        }
         auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
         v = *reinterpret_cast<const Helper::type*>(&fixed);
         return res;
@@ -977,6 +1065,10 @@ struct traits<trait_families::floating_point, FloatingPointType>
         const std::size_t offset = data.position();
         res += data.advance(sizeof(Helper::int_type));  // advance before using the memory. This prevents reading out of
                                                         // bounds.
+        if (!res)
+        {
+          return res;
+        }
         auto fixed = fixEndianness(*reinterpret_cast<const typename Helper::int_type*>(&data[offset]));
         v = Helper::decode(fixed);
         return res;
