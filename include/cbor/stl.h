@@ -288,7 +288,7 @@ struct traits<std::string>
         res += data.advance(length);  // advance before reading.
         if (res)
         {
-          v.insert(v.begin(), &(data[offset]), &(data[offset]) + length);
+          v.insert(v.begin(), &(data[offset]), &(data[offset]) + (std::min(length, data.size() - offset)));
         }
       }
     }
