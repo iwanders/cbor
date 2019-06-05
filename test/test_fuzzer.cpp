@@ -35,17 +35,18 @@
 #include "cbor/stl.h"
 #include "test.h"
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+{
   //  if (size == 0)
   //  {
-    //  return 0;
+  //  return 0;
   //  }
   cbor::cbor_object cbor_representation;
   auto result = cbor::from_cbor(cbor_representation, data, size);
   //  std::uint8_t z;
   //  for (size_t i = 0; i < size; i++)
   //  {
-    //  z = data[i];
+  //  z = data[i];
   //  }
   return 0;
 }

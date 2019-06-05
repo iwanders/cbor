@@ -181,7 +181,6 @@ struct read_adapter_helper
     return false;
   }
 
-
   result expectArray() const
   {
     const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
@@ -189,8 +188,7 @@ struct read_adapter_helper
     {
       std::uint8_t peeked;
       reader.peek(peeked);
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) +
-                      " is different then expected type 0b100");
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) + " is different then expected type 0b100");
       return false;
     }
     return true;
@@ -203,8 +201,7 @@ struct read_adapter_helper
     {
       std::uint8_t peeked;
       reader.peek(peeked);
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) +
-                      " is different then expected type 0b100");
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) + " is different then expected type 0b100");
       return false;
     }
     return true;
@@ -259,7 +256,6 @@ struct read_adapter_helper
     }
     return false;
   }
-
 
   bool isUnsignedInt() const
   {
@@ -371,7 +367,6 @@ struct read_adapter_helper
     }
     return false;
   }
-
 };
 
 template <>

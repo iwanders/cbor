@@ -209,7 +209,6 @@ public:
   inline std::string prettyPrint(std::size_t indent = 0) const;
 };
 
-
 inline std::string hexdump(const cbor_object& d)
 {
   return hexdump(d.serialized_);
@@ -523,8 +522,7 @@ struct traits<std::map<KeyType, ValueType>>
     {
       std::uint8_t peeked;
       data.peek(peeked);
-      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) +
-                      " is different then expected type 0b101");
+      CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) + " is different then expected type 0b101");
       return false;
     }
     if (data.isIndefinite())
@@ -542,7 +540,7 @@ struct traits<std::map<KeyType, ValueType>>
         }
         v.emplace(std::move(key), std::move(value));
       }
-      return res + data.readBreak(); // pop the break byte.
+      return res + data.readBreak();  // pop the break byte.
     }
 
     std::size_t length;
@@ -591,7 +589,7 @@ struct traits<cbor_object>
   {
     //  Just copy the approppriate chunks into the object....
     std::size_t start_pos = data.position();
-    
+
     auto copy_to_object = [&v, &data, &start_pos](const result& res) {
       if (res)
       {
@@ -614,7 +612,6 @@ struct traits<cbor_object>
       std::int64_t z;
       return copy_to_object(from_cbor(z, data));
     }
-
 
     if (data.isFloatingPoint())
     {
