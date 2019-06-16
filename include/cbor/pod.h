@@ -164,6 +164,9 @@ struct write_adapter_helper
 template <typename ReadAdapter>
 struct read_adapter_helper
 {
+  std::size_t recursion{ 0 };
+  std::size_t recursion_limit{ static_cast<std::size_t>(-1) };
+
   result readLength(std::size_t& length)
   {
     ReadAdapter& reader = *static_cast<ReadAdapter*>(this);
@@ -176,6 +179,16 @@ struct read_adapter_helper
     if (reader.position() < reader.size())
     {
       value = reader[reader.position()];
+      return true;
+    }
+    return false;
+  }
+
+  bool exceedsRecursion() const
+  {
+    if (recursion >= recursion_limit)
+    {
+      CBOR_TYPE_ERROR("Recursion limit reached, limit was " + std::to_string(recursion_limit));
       return true;
     }
     return false;
@@ -427,6 +440,7 @@ struct read_adapter<DataType*> : std::true_type, read_adapter_helper<read_adapte
   const DataType* data;
   std::size_t max_length;
   std::size_t cursor = 0;
+
   template <typename T>
   static read_adapter<DataType*> adapt(const DataType* d, const T s)
   {

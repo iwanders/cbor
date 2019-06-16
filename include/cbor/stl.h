@@ -87,7 +87,7 @@ template <>
 struct read_adapter<Data> : std::true_type, read_adapter_helper<read_adapter<Data>>
 {
   const Data& data;
-  std::size_t cursor = 0;
+  std::size_t cursor{ 0 };
   static read_adapter<Data> adapt(const Data& d)
   {
     return read_adapter<Data>{ d };
@@ -238,7 +238,8 @@ struct read_adapter<cbor_object> : std::true_type
 {
   static read_adapter<Data> adapt(const cbor_object& d)
   {
-    return read_adapter<Data>{ d.serialized_ };
+    auto reader = read_adapter<Data>{ d.serialized_ };
+    return reader;
   }
 };
 
@@ -564,6 +565,7 @@ struct traits<std::map<KeyType, ValueType>>
   }
 };
 
+
 /**
  * Specialization for cbor_object.
  */
@@ -589,6 +591,11 @@ struct traits<cbor_object>
   {
     //  Just copy the approppriate chunks into the object....
     std::size_t start_pos = data.position();
+
+    if (data.exceedsRecursion())
+    {
+      return false;
+    }
 
     auto copy_to_object = [&v, &data, &start_pos](const result& res) {
       if (res)
@@ -628,15 +635,20 @@ struct traits<cbor_object>
 
     if (data.isArray())
     {
+      data.recursion++;
       std::vector<cbor_object> z;
       auto res = from_cbor(z, data);
+      data.recursion--;
       return copy_to_object(res);
     }
 
     if (data.isMap())
     {
+      data.recursion++;
       std::map<cbor_object, cbor_object> z;
-      return copy_to_object(from_cbor(z, data));
+      auto res = from_cbor(z, data);
+      data.recursion--;
+      return copy_to_object(res);
     }
 
     // String-esque
