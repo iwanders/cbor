@@ -37,16 +37,14 @@
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  //  if (size == 0)
-  //  {
-  //  return 0;
-  //  }
-  cbor::cbor_object cbor_representation;
-  auto result = cbor::from_cbor(cbor_representation, data, size);
-  //  std::uint8_t z;
-  //  for (size_t i = 0; i < size; i++)
-  //  {
-  //  z = data[i];
-  //  }
+  //  cbor::cbor_object cbor_representation;
+  //  auto result = cbor::from_cbor(cbor_representation, data, size);
+
+  using read_adapter = cbor::detail::get_read_adapter<decltype(data)>;
+  auto wrapper = read_adapter::adapt(data, size);
+  wrapper.recursion_limit = 100;
+  cbor::cbor_object output;
+  cbor::detail::from_cbor(output, wrapper);
+
   return 0;
 }
