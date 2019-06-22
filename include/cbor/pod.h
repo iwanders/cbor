@@ -173,6 +173,7 @@ struct read_adapter_helper
     std::uint8_t first_byte;
     return deserializeItem(first_byte, length, reader);
   }
+
   bool peek(std::uint8_t& value) const
   {
     const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
@@ -465,6 +466,11 @@ struct read_adapter<DataType*> : std::true_type, read_adapter_helper<read_adapte
 
   result advance(std::size_t count)
   {
+    if ((cursor + count) < cursor)
+    {
+      CBOR_BUFFER_ERROR("Advance failed, advance size too large.");
+      return false;
+    }
     cursor += count;
     if (cursor > max_length)
     {

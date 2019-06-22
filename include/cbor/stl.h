@@ -98,8 +98,14 @@ struct read_adapter<Data> : std::true_type, read_adapter_helper<read_adapter<Dat
   {
     return cursor;
   }
+
   result advance(std::size_t count)
   {
+    if ((cursor + count) < cursor)
+    {
+      CBOR_BUFFER_ERROR("Advance failed, advance size too large.");
+      return false;
+    }
     cursor += count;
     if (cursor > data.size())
     {
@@ -264,7 +270,6 @@ struct traits<std::string>
     std::uint64_t length;
     result res = deserializeItem(first_byte, length, data);
     std::uint8_t read_major_type = first_byte >> 5;
-    std::cout << "Reading string: " << res << " length: " << length << std::endl;
     if (read_major_type == 0b011 || read_major_type == 0b010)
     {
       if ((first_byte & 0b11111) == 31)
@@ -287,7 +292,6 @@ struct traits<std::string>
         v.clear();
         std::size_t offset = data.position();
         res += data.advance(length);  // advance before reading.
-        std::cout << "res after advance" << res << std::endl;
         if (res)
         {
           v.insert(v.begin(), &(data[offset]), &(data[offset]) + (std::min(length, data.size() - offset)));
@@ -593,7 +597,7 @@ struct traits<cbor_object>
   {
     std::uint8_t peeked;
     data.peek(peeked);
-    std::cout << "Position in data: " << data.position() << " is: " << std::to_string(peeked) << std::endl;
+    //  std::cout << "Position in data: " << data.position() << " is: " << std::to_string(peeked) << std::endl;
     //  Just copy the approppriate chunks into the object....
     std::size_t start_pos = data.position();
 
@@ -663,7 +667,6 @@ struct traits<cbor_object>
       return copy_to_object(from_cbor(z, data));
     }
 
-      std::cout << "wf!" << std::endl;
     // maybe throw?
     return false;
   }
