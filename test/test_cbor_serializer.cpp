@@ -735,8 +735,8 @@ void test_recursion()
 
   const uint8_t indefinite_array = 0b10011111;
   const uint8_t array_break = 0b11111111;
-  Data input{ indefinite_array, indefinite_array,indefinite_array, array_break, array_break, array_break};
-  Data expected = {  };
+  Data input{ indefinite_array, indefinite_array, indefinite_array, array_break, array_break, array_break };
+  Data expected = {};
 
   {
     using read_adapter = cbor::detail::get_read_adapter<Data>;
@@ -748,13 +748,12 @@ void test_recursion()
   }
 
   expect_error<cbor::type_error>([&]() {
-      using read_adapter = cbor::detail::get_read_adapter<Data>;
-      auto wrapper = read_adapter::adapt(input);
-      wrapper.recursion_limit = 1;
-      std::vector<cbor::cbor_object> output;
-      cbor::detail::from_cbor(output, wrapper);
-    });
-
+    using read_adapter = cbor::detail::get_read_adapter<Data>;
+    auto wrapper = read_adapter::adapt(input);
+    wrapper.recursion_limit = 1;
+    std::vector<cbor::cbor_object> output;
+    cbor::detail::from_cbor(output, wrapper);
+  });
 }
 
 int main(int /* argc */, char** /* argv */)

@@ -571,7 +571,6 @@ struct traits<std::map<KeyType, ValueType>>
   }
 };
 
-
 /**
  * Specialization for cbor_object.
  */

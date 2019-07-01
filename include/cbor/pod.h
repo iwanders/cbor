@@ -38,7 +38,6 @@
 #include "traits.h"
 #include "util.h"
 
-
 // -Wextra triggers the fallthrough the float conversion relies on, fix this with the appropriate compiler specific
 // fallthrough attribute.
 #if __has_cpp_attribute(clang::fallthrough)
