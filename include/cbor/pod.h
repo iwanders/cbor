@@ -38,6 +38,17 @@
 #include "traits.h"
 #include "util.h"
 
+
+// -Wextra triggers the fallthrough the float conversion relies on, fix this with the appropriate compiler specific
+// fallthrough attribute.
+#if __has_cpp_attribute(clang::fallthrough)
+#define CBOR_FALLTHROUGH [[clang::fallthrough]]
+#elif __has_cpp_attribute(fallthrough)
+#define CBOR_FALLTHROUGH [[fallthrough]]
+#else
+#define CBOR_FALLTHROUGH
+#endif
+
 namespace cbor
 {
 /**
@@ -998,6 +1009,7 @@ struct traits<trait_families::floating_point, FloatingPointType>
           }
           return res + sizeof(Helper::int_type);
         }
+        CBOR_FALLTHROUGH;
         // intentional fallthrough, it's downgradable to single precision float.
       case trait_floating_point_helper<float>::minor_type:
         if (!trait_floating_point_helper<float>::downgradable(v))
@@ -1013,6 +1025,7 @@ struct traits<trait_families::floating_point, FloatingPointType>
           }
           return res + sizeof(Helper::int_type);
         }
+        CBOR_FALLTHROUGH;
         // intentional fallthrough, it's downgradable to half precision float.
       default:
       {

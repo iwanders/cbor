@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.5.0)
 
 project(Cbor VERSION 0.0.1)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CBOR_EXPORTS "")
 
