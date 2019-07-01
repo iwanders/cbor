@@ -46,7 +46,8 @@ Supported types plain old data types:
 - `const char*`: Serializes into a cbor text string (utf-8).
 - `nullptr_t`: Serializes into cbor `null` value.
 - `float`: Will be serialized into short float if exact. Can be read into a double.
-- `double`: Will be serialized into single precision float if exact, or short precision float if exact. Cannot be read into a float as precision is never degraded during (de)serialization.
+- `double`: Will be serialized into single precision float if exact, or short precision float if exact. Cannot be read
+  into a float as precision is never degraded during (de)serialization.
 - `d[N]`: Any C style array is serialized as a cbor array of `N` long, deserialization requires fixed length array.
 
 Supported STL containers:
@@ -66,6 +67,25 @@ Supported CBOR types:
 - `boolean`
 - `null`
 - `text` and `byte` both treated as strings.
+
+Supported custom type:
+- `cbor_object`, this object acts as a read adapter and stores data internally into a `std::vector<std::uint8_t>`.
+  Any input can be deserialized into this type, after which all methods from the `read_adapter_helper` can be used to
+  introspect the data. Additionally it has a `prettyPrint()` method that produces a human readable string.
+
+## Fuzz testing & recursion limit
+
+This library has been tested using libFuzzer. When fuzzing we cannot rely on the nice compile time properties of the
+templates, instead deserialization was performed into a `cbor_object`. Since the fuzzer liked finding stack overflows
+by opening nested indefinite length arrays it is possible to limit the maximum recursion depth. This is done in the
+fuzzer binary, if the parser has to deal with malicious data limiting this may be a good idea.
+
+```
+mkdir build
+cd build
+CC=clang-8 CXX=clang++-8 cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ../cbor/ && make fuzz_corpus_init fuzz_start
+```
+
 
 [cbor]: https://en.wikipedia.org/wiki/CBOR
 [rfc7049]: https://tools.ietf.org/html/rfc7049
