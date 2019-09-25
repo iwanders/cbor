@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <typeinfo>
 #include "cbor.h"
 #include "exceptions.h"
 #include "traits.h"
