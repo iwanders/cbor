@@ -211,7 +211,7 @@ struct read_adapter_helper
     const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
     if (!isArray())
     {
-      std::uint8_t peeked;
+      std::uint8_t peeked{ 0 };
       reader.peek(peeked);
       CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) + " is different then expected type 0b100");
       return false;
@@ -224,7 +224,7 @@ struct read_adapter_helper
     const ReadAdapter& reader = *static_cast<const ReadAdapter*>(this);
     if (!isMap())
     {
-      std::uint8_t peeked;
+      std::uint8_t peeked{ 0 };
       reader.peek(peeked);
       CBOR_TYPE_ERROR("Parsed major type " + std::to_string(peeked) + " is different then expected type 0b100");
       return false;
@@ -235,7 +235,7 @@ struct read_adapter_helper
   result expectArray(const std::size_t N)
   {
     ReadAdapter& reader = *static_cast<ReadAdapter*>(this);
-    std::uint8_t first_byte;
+    std::uint8_t first_byte{ 0 };
     std::uint64_t length = 0;
     result res = deserializeItem(first_byte, length, reader);
     if (length != N)

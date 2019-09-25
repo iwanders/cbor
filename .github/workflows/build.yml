@@ -43,7 +43,7 @@ jobs:
       - name: cmake ..
         run: |
           cd build
-          cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo  -DCMAKE_C_COMPILER="clang" -DCMAKE_CXX_COMPILER="clang++" ..
+          cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo  -DCBOR_BUILD_FUZZ_TEST=off  -DCMAKE_C_COMPILER="clang" -DCMAKE_CXX_COMPILER="clang++" ..
       - name: make
         run: |
           cd build

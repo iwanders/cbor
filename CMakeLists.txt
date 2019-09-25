@@ -17,6 +17,8 @@ target_compile_features(cbor INTERFACE cxx_relaxed_constexpr)
 list(APPEND CBOR_EXPORTS cbor)
 
 
+option(CBOR_BUILD_FUZZ_TEST "Build the fuzztester, only has effect when build with clang." ON)
+
 # testing
 include(CTest)
 if(BUILD_TESTING)
