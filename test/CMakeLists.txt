@@ -21,7 +21,7 @@ target_link_libraries(test_shortfloat PRIVATE cbor)
 target_compile_options(test_shortfloat PRIVATE ${CBOR_COMPILE_OPTIONS})
 add_test(shortfloat test_shortfloat)
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND CBOR_BUILD_FUZZ_TEST)
   set(FUZZ_CORPUS_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/fuzz_corpus/)
   add_custom_target(fuzz_corpus_init ${CMAKE_CURRENT_SOURCE_DIR}/generate_fuzz_corpus.py ${CMAKE_CURRENT_SOURCE_DIR} ${FUZZ_CORPUS_LOCATION})
   

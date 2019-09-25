@@ -680,14 +680,14 @@ struct traits<trait_families::std_array_family, ArrayType>
   static result serializer(const std::array<InType, N>& d, Data& data)
   {
     // Let the c style array handle this one.
-    const auto& z = reinterpret_cast<const InType(&)[N]>(d);
+    const auto& z = type_cast<const InType(&)[N]>(d);
     return to_cbor(z, data);
   }
   template <typename InType, typename Data, size_t N>
   static result deserializer(std::array<InType, N>& d, Data& data)
   {
     // Let the c style array handle this one.
-    auto& z = reinterpret_cast<InType(&)[N]>(d);
+    auto& z = type_cast<InType(&)[N]>(d);
     return from_cbor(z, data);
   }
 };

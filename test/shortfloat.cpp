@@ -154,10 +154,18 @@ struct Table
   }
 };
 
+union float_uint32
+{
+  float f;
+  std::uint32_t i;
+};
+
 std::uint16_t encode(const float f_in)
 {
   static const auto& t = Table::getTables();
-  const std::uint32_t& f = *reinterpret_cast<const std::uint32_t*>(&f_in);
+  float_uint32 converter;
+  converter.f = f_in;
+  const std::uint32_t f = converter.i;
   return t.basetable[(f >> 23) & 0x1ff] + ((f & 0x007fffff) >> t.shifttable[(f >> 23) & 0x1ff]);
 }
 
@@ -165,7 +173,9 @@ float decode(const std::uint16_t h)
 {
   static const auto& t = Table::getTables();
   std::uint32_t z = t.mantissatable[t.offsettable[h >> 10] + (h & 0x3ff)] + t.exponenttable[h >> 10];
-  return *reinterpret_cast<const float*>(&z);
+  float_uint32 converter;
+  converter.i = z;
+  return converter.f;
 }
 
 }  //  namespace shortfloat

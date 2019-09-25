@@ -29,6 +29,7 @@
 */
 #pragma once
 #include <cstdint>
+#include <cstring>
 
 namespace cbor
 {
@@ -62,4 +63,45 @@ inline std::uint64_t fixEndianness(const std::uint64_t in)
                         static_cast<std::uint32_t>(b[6] << 8) | static_cast<std::uint32_t>(b[7]);
   return static_cast<std::uint64_t>((static_cast<std::uint64_t>(upper) << (4 * 8)) | lower);
 }
+
+namespace detail
+{
+
+template < typename T>
+struct  RefWrapper
+{
+  const T& value;
+};
+
+template <typename In, typename Out>
+union Converter
+{
+    RefWrapper<In> in;
+    RefWrapper<Out> out;
+};
+
+}
+
+/**
+ * @brief Interpret memory at in into a different type.
+ * @param in The address to start interpreting from.
+ * @tparam Out The return type.
+ * @tparam In the input pointer type.
+ * This function is here because reinterpret_casts caused type pruned pointer aliasing warnings.
+ */
+template <typename Out, typename In>
+const Out& type_cast(const In& in)
+{
+  return detail::Converter<In, Out>{{in}}.out.value;  // don't ask about the curly braces.
+}
+
+/**
+ * @brief Write a memory equal to the length of a certain type from in into out.
+ */
+template <typename Out>
+void write_into(void* out, const void* in)
+{
+  std::memcpy(out, in, sizeof(Out));
+}
+
 }  // namespace cbor

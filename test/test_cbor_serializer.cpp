@@ -41,6 +41,8 @@
 
 void test_stl()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
+
   // test tuple
   {
     std::tuple<unsigned int, unsigned int> input{ 1, 2 };
@@ -132,6 +134,7 @@ void test_stl()
 
 void test_array()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
   // Serializing into and from array:
   {
     unsigned int input{ 2 };
@@ -221,6 +224,7 @@ cbor::result from_cbor(Bar& b, cbor::detail::read_adapter<Data...>& data)
 
 void test_adl()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
   {
     foo::Bar input{ 2 };
     Data expected = { 0x02 };
@@ -250,6 +254,7 @@ void test_adl()
 
 void test_pod()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
   tester<std::uint8_t>(50, { 0x18, 0x32 });
   tester<std::int8_t>(-50, { 0x38, 0x31 });
   tester<std::uint16_t>(50, { 0x18, 0x32 });
@@ -290,6 +295,7 @@ std::size_t to_cbor(const Buz& b, cbor::cbor_object& data)
  */
 void test_into_object()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
   {
     cbor::cbor_object cbor_representation;
     unsigned int input{ 2 };
@@ -452,6 +458,7 @@ cbor::result from_cbor(Buz& b, Data& data)
 
 void test_compound_type()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
   const bool print_compare = false;
   {
     compound_type::Bar input{ 2, 3 };
@@ -482,6 +489,7 @@ void test_compound_type()
       test(output[2].x, 7u, print_compare);
     }
   }
+
   {
     std::vector<compound_type::Buz> input = { compound_type::Buz{ 2, 5 }, compound_type::Buz{ 3, 6 },
                                               compound_type::Buz{ 4, 7 } };
@@ -522,6 +530,7 @@ void test_compound_type()
 
 void test_result_operators()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
   cbor::result success1 = 5;
   cbor::result success2 = 5;
   std::cout << "success1: " << success1 << std::endl;
@@ -546,12 +555,11 @@ void test_result_operators()
   test(assign_false.success, false);
   std::cout << "assign_false: " << assign_false << std::endl;
 
-  test(bool{ assign_false }, false);
+  test(static_cast<bool>(assign_false), false);
 
   cbor::result assign_true = true;
   std::cout << "assign_true: " << assign_true << std::endl;
-
-  test(bool{ assign_true }, true);
+  test(static_cast<bool>(assign_true), true);
 
   cbor::result assign_one = 1;
   std::cout << "assign_one: " << assign_one << std::endl;
@@ -588,6 +596,7 @@ void test_result_operators()
 
 void test_appendix_a()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
   // https://tools.ietf.org/html/rfc7049#appendix-A
   test_appendix_A_decode<std::uint32_t>("00", 0, true);
   test_appendix_A_decode<std::uint32_t>("01", 1, true);
@@ -683,6 +692,7 @@ void test_appendix_a()
 
 void test_exceptions()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
   const bool no_print = false;
 
   expect_error<cbor::buffer_error>([]() {
@@ -731,6 +741,7 @@ void test_exceptions()
 
 void test_recursion()
 {
+  std::cout << "Test " << __FUNCTION__ << " " << __LINE__ << std::endl;
   const bool no_print = false;
 
   const uint8_t indefinite_array = 0b10011111;
