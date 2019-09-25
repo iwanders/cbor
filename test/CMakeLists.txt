@@ -1,5 +1,11 @@
 
-set(CBOR_COMPILE_OPTIONS "-Werror;-Wall;-Wextra;-Wshadow;-Wnon-virtual-dtor;-Wpedantic;")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(CLANG_ONLY_COMPILE_FLAGS "-Wconversion;")
+  message(STATUS "Compiler is clang, adding options: ${CLANG_ONLY_COMPILE_FLAGS}")
+  # disable mismatched tags until https://github.com/nlohmann/json/issues/1401
+  set(CLANG_ONLY_COMPILE_FLAGS "${CLANG_ONLY_COMPILE_FLAGS};-Wno-mismatched-tags")
+endif()
+set(CBOR_COMPILE_OPTIONS "-Werror;-Wall;-Wextra;-Wshadow;-Wnon-virtual-dtor;-Wpedantic;${CLANG_ONLY_COMPILE_FLAGS}")
 
 add_executable(test_cbor_serializer test_cbor_serializer.cpp)
 target_link_libraries(test_cbor_serializer PRIVATE cbor)

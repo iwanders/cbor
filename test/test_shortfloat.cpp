@@ -64,7 +64,7 @@ void test_half_precision_float()
 {
   using FPH = cbor::detail::trait_floating_point_helper<std::uint16_t>;
   test(FPH::encode(0.0), 0x0000);
-  test(FPH::encode(std::pow(2, -24)), 0x0001);
+  test(FPH::encode(static_cast<float>(std::pow(2, -24))), 0x0001);
   test(FPH::encode(-0.0), 0x8000);
   test(FPH::encode(1.0), 0x3c00);
   test(FPH::encode(-2.0), 0xc000);
@@ -76,10 +76,10 @@ void test_half_precision_float()
   for (std::size_t i = 0; i < (1 << 16); i++)
   {
     // Test decodes.
-    std::uint16_t half = i;
+    std::uint16_t half = static_cast<std::uint16_t>(i);
     float h_to_f_table = shortfloat::decode(half);
     float h_to_f_cbor = FPH::decode(half);
-    float h_to_f_rfc = rfc_decode(reinterpret_cast<const unsigned char*>(&half));
+    float h_to_f_rfc = static_cast<float>(rfc_decode(reinterpret_cast<const unsigned char*>(&half)));
 
     // Own implementation must concur with shortfloat table implementation, which seems de-facto standard.
     test(cbor::type_cast<const std::uint32_t>(h_to_f_table), cbor::type_cast<const std::uint32_t>(h_to_f_cbor),
@@ -112,7 +112,7 @@ void test_complete_conversion_correctness()
   // Check if the table and own implementation concur on all possible conversions.
   for (std::size_t i = 0; i < (1UL << 32); i++)
   {
-    std::uint32_t float_as_i = i;
+    std::uint32_t float_as_i = static_cast<std::uint32_t>(i);
     const float f = cbor::type_cast<const float>(float_as_i);
     std::uint16_t f_to_h_table = shortfloat::encode(f);
     std::uint16_t f_to_h_cbor = FPH::encode<handle_out_of_bounds>(f);
@@ -124,7 +124,7 @@ float get_random()
 {
   static std::default_random_engine e;
   static std::uniform_real_distribution<> dis(-65535, 65535);
-  return dis(e);
+  return static_cast<float>(dis(e));
 }
 void compare_speed()
 {

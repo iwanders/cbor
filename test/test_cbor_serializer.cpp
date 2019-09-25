@@ -569,7 +569,7 @@ void test_result_operators()
   std::cout << "assign_zero: " << assign_zero << std::endl;
   test(assign_zero.success, true);
   test(assign_zero.length, 0u);
-  std::uint32_t x = assign_one;
+  std::uint32_t x = static_cast<std::uint32_t>(assign_one);
   std::cout << "x: " << x << std::endl;
   test(x, 1u);
 

@@ -118,7 +118,7 @@ Data hexToData(std::string s)
     thing.resize(2);
     thing[0] = s[i * 2];
     thing[1] = s[i * 2 + 1];
-    res.push_back(std::strtoll(thing.data(), nullptr, 16));
+    res.push_back(static_cast<Data::value_type>(std::strtoll(thing.data(), nullptr, 16)));
   }
   return res;
 }
