@@ -82,7 +82,7 @@ void test_half_precision_float()
     float h_to_f_rfc = rfc_decode(reinterpret_cast<const unsigned char*>(&half));
 
     // Own implementation must concur with shortfloat table implementation, which seems de-facto standard.
-    test(*reinterpret_cast<const std::uint32_t*>(&h_to_f_table), *reinterpret_cast<const std::uint32_t*>(&h_to_f_cbor),
+    test(cbor::type_cast<const std::uint32_t>(h_to_f_table), cbor::type_cast<const std::uint32_t>(h_to_f_cbor),
          print_off);
 
     // rfc decode doesn't do fraction of nans
@@ -92,7 +92,7 @@ void test_half_precision_float()
     }
     else
     {
-      test(*reinterpret_cast<const std::uint32_t*>(&h_to_f_table), *reinterpret_cast<const std::uint32_t*>(&h_to_f_rfc),
+      test(cbor::type_cast<const std::uint32_t>(h_to_f_table), cbor::type_cast<const std::uint32_t>(h_to_f_rfc),
            print_off);
     }
 
@@ -113,7 +113,7 @@ void test_complete_conversion_correctness()
   for (std::size_t i = 0; i < (1UL << 32); i++)
   {
     std::uint32_t float_as_i = i;
-    const float f = *reinterpret_cast<const float*>(&float_as_i);
+    const float f = cbor::type_cast<const float>(float_as_i);
     std::uint16_t f_to_h_table = shortfloat::encode(f);
     std::uint16_t f_to_h_cbor = FPH::encode<handle_out_of_bounds>(f);
     test(f_to_h_table, f_to_h_cbor, print_off);
