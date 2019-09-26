@@ -579,8 +579,9 @@ template <typename PointedType>
 struct traits<std::shared_ptr<PointedType>>
 {
   using Type = std::shared_ptr<PointedType>;
+
   template <typename Data>
-  static result serializer(const std::shared_ptr<PointedType>& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
     if (v == nullptr)
     {
@@ -597,13 +598,8 @@ struct traits<std::shared_ptr<PointedType>>
       v = nullptr;
       return data.advance(1);
     }
-    else
-    {
-      v = std::make_shared<PointedType>();
-      auto res = from_cbor(*v, data);
-      return res;
-    }
-    return false;
+    v = std::make_shared<PointedType>();
+    return from_cbor(*v, data);
   }
 };
 
@@ -614,8 +610,9 @@ template <typename PointedType>
 struct traits<std::unique_ptr<PointedType>>
 {
   using Type = std::unique_ptr<PointedType>;
+
   template <typename Data>
-  static result serializer(const std::unique_ptr<PointedType>& v, Data& data)
+  static result serializer(const Type& v, Data& data)
   {
     if (v == nullptr)
     {
@@ -632,13 +629,8 @@ struct traits<std::unique_ptr<PointedType>>
       v = nullptr;
       return data.advance(1);
     }
-    else
-    {
-      v = std::make_unique<PointedType>();
-      auto res = from_cbor(*v, data);
-      return res;
-    }
-    return false;
+    v = std::make_unique<PointedType>();
+    return from_cbor(*v, data);
   }
 };
 
