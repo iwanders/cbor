@@ -767,12 +767,11 @@ void test_recursion()
   });
 }
 
-
 void test_pointer_serialization()
 {
   {
     std::shared_ptr<int> input = std::make_shared<int>(2);
-    
+
     Data expected = { 0x02 };
     Data cbor_representation;
     auto res = cbor::to_cbor(input, cbor_representation);
@@ -784,7 +783,7 @@ void test_pointer_serialization()
   }
   {
     std::shared_ptr<int> input;
-    
+
     Data expected = { ((0b111 << 5) | 22) };
     Data cbor_representation;
     auto res = cbor::to_cbor(input, cbor_representation);
@@ -798,7 +797,7 @@ void test_pointer_serialization()
 
   {
     std::unique_ptr<int> input = std::make_unique<int>(2);
-    
+
     Data expected = { 0x02 };
     Data cbor_representation;
     auto res = cbor::to_cbor(input, cbor_representation);
@@ -810,7 +809,7 @@ void test_pointer_serialization()
   }
   {
     std::unique_ptr<int> input;
-    
+
     Data expected = { ((0b111 << 5) | 22) };
     Data cbor_representation;
     auto res = cbor::to_cbor(input, cbor_representation);

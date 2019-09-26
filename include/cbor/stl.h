@@ -33,9 +33,9 @@
 #include <iomanip>
 #include <limits>
 #include <map>
+#include <memory>
 #include <tuple>
 #include <vector>
-#include <memory>
 #include "cbor.h"
 #include "exceptions.h"
 #include "traits.h"
@@ -572,8 +572,6 @@ struct traits<std::map<KeyType, ValueType>>
   }
 };
 
-
-
 /**
  * Specialization for std::shared_ptr.
  */
@@ -643,7 +641,6 @@ struct traits<std::unique_ptr<PointedType>>
     return false;
   }
 };
-
 
 /**
  * Specialization for cbor_object.
