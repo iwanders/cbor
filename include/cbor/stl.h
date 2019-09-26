@@ -35,6 +35,7 @@
 #include <map>
 #include <tuple>
 #include <vector>
+#include <memory>
 #include "cbor.h"
 #include "exceptions.h"
 #include "traits.h"
@@ -570,6 +571,79 @@ struct traits<std::map<KeyType, ValueType>>
     return res;
   }
 };
+
+
+
+/**
+ * Specialization for std::shared_ptr.
+ */
+template <typename PointedType>
+struct traits<std::shared_ptr<PointedType>>
+{
+  using Type = std::shared_ptr<PointedType>;
+  template <typename Data>
+  static result serializer(const std::shared_ptr<PointedType>& v, Data& data)
+  {
+    if (v == nullptr)
+    {
+      return to_cbor(nullptr, data);
+    }
+    return to_cbor(*v, data);
+  }
+
+  template <typename Data>
+  static result deserializer(Type& v, Data& data)
+  {
+    if (data.isNull())
+    {
+      v = nullptr;
+      return data.advance(1);
+    }
+    else
+    {
+      v = std::make_shared<PointedType>();
+      auto res = from_cbor(*v, data);
+      return res;
+    }
+    return false;
+  }
+};
+
+/**
+ * Specialization for std::unique_ptr.
+ */
+template <typename PointedType>
+struct traits<std::unique_ptr<PointedType>>
+{
+  using Type = std::unique_ptr<PointedType>;
+  template <typename Data>
+  static result serializer(const std::unique_ptr<PointedType>& v, Data& data)
+  {
+    if (v == nullptr)
+    {
+      return to_cbor(nullptr, data);
+    }
+    return to_cbor(*v, data);
+  }
+
+  template <typename Data>
+  static result deserializer(Type& v, Data& data)
+  {
+    if (data.isNull())
+    {
+      v = nullptr;
+      return data.advance(1);
+    }
+    else
+    {
+      v = std::make_unique<PointedType>();
+      auto res = from_cbor(*v, data);
+      return res;
+    }
+    return false;
+  }
+};
+
 
 /**
  * Specialization for cbor_object.

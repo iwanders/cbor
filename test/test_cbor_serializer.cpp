@@ -767,6 +767,62 @@ void test_recursion()
   });
 }
 
+
+void test_pointer_serialization()
+{
+  {
+    std::shared_ptr<int> input = std::make_shared<int>(2);
+    
+    Data expected = { 0x02 };
+    Data cbor_representation;
+    auto res = cbor::to_cbor(input, cbor_representation);
+    test_result(res, cbor_representation, expected);
+
+    std::shared_ptr<int> read_back;
+    cbor::from_cbor(read_back, cbor_representation);
+    test(*read_back, *input);
+  }
+  {
+    std::shared_ptr<int> input;
+    
+    Data expected = { ((0b111 << 5) | 22) };
+    Data cbor_representation;
+    auto res = cbor::to_cbor(input, cbor_representation);
+    test_result(res, cbor_representation, expected);
+
+    std::shared_ptr<int> read_back = std::make_shared<int>(1337);
+    cbor::from_cbor(read_back, cbor_representation);
+    test(read_back == nullptr, true);
+    test(input == nullptr, true);
+  }
+
+  {
+    std::unique_ptr<int> input = std::make_unique<int>(2);
+    
+    Data expected = { 0x02 };
+    Data cbor_representation;
+    auto res = cbor::to_cbor(input, cbor_representation);
+    test_result(res, cbor_representation, expected);
+
+    std::unique_ptr<int> read_back;
+    cbor::from_cbor(read_back, cbor_representation);
+    test(*read_back, *input);
+  }
+  {
+    std::unique_ptr<int> input;
+    
+    Data expected = { ((0b111 << 5) | 22) };
+    Data cbor_representation;
+    auto res = cbor::to_cbor(input, cbor_representation);
+    test_result(res, cbor_representation, expected);
+
+    std::unique_ptr<int> read_back = std::make_unique<int>(1337);
+    cbor::from_cbor(read_back, cbor_representation);
+    test(read_back == nullptr, true);
+    test(input == nullptr, true);
+  }
+}
+
 int main(int /* argc */, char** /* argv */)
 {
   test_pod();
@@ -779,6 +835,7 @@ int main(int /* argc */, char** /* argv */)
   test_appendix_a();
   test_exceptions();
   test_recursion();
+  test_pointer_serialization();
 
   if (failed)
   {

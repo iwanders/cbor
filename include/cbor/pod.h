@@ -392,6 +392,16 @@ struct read_adapter_helper
     }
     return false;
   }
+
+  bool isNull() const
+  {
+    std::uint8_t v;
+    if (peek(v))
+    {
+      return v == ((0b111 << 5) | 22);
+    }
+    return false;
+  }
 };
 
 template <>
