@@ -18,10 +18,11 @@ list(APPEND CBOR_EXPORTS cbor)
 
 
 option(CBOR_BUILD_FUZZ_TEST "Build the fuzztester, only has effect when build with clang." ON)
+option(CBOR_BUILD_TESTS "Build the unit tests for the cbor library" ON)
 
 # testing
 include(CTest)
-if(BUILD_TESTING)
+if(CBOR_BUILD_TESTS)
   enable_testing()
   add_subdirectory(test)
 endif()
