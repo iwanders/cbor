@@ -68,7 +68,7 @@ struct result
   template <typename T, std::enable_if_t<!std::is_same<bool, T>::value, int> = 0>
   result(T len)
   {
-    length = len;
+    length = static_cast<std::size_t>(len);
   }
 
   /**
@@ -103,7 +103,7 @@ struct result
   {
     result res;
     res.success = success;
-    res.length = length + a;
+    res.length = length + static_cast<std::size_t>(a);
     return res;
   }
 
@@ -432,7 +432,7 @@ struct write_adapter<DataType*> : std::true_type, write_adapter_helper<write_ada
 
   std::uint32_t size() const
   {
-    return used_size;
+    return static_cast<std::uint32_t>(used_size);
   }
 
   DataType& operator[](std::size_t pos)
@@ -519,14 +519,14 @@ result serializeItem(const std::uint8_t major_type, const std::uint8_t v, Data& 
   if (v <= 23)
   {
     const std::size_t offset = data.size();
-    result res = data.resize(data.size() + 1);
+    result res = data.resize(static_cast<std::uint32_t>(data.size() + 1));
     data[offset] = std::uint8_t(major_type << 5) | v;
     return res + 1;
   }
   else
   {
     const std::size_t offset = data.size();
-    result res = data.resize(offset + 2);
+    result res = data.resize(static_cast<std::uint32_t>(offset + 2));
     data[offset] = std::uint8_t(major_type << 5) | 24;
     data[offset + 1] = v;
     return res + 2;
@@ -559,7 +559,7 @@ result serializeItem(const std::uint8_t major_type, const std::uint16_t v, Data&
     return serializeItem(major_type, static_cast<std::uint8_t>(v), data);
   }
   const std::size_t offset = data.size();
-  result res = data.resize(offset + 2 + 1);
+  result res = data.resize(static_cast<std::uint32_t>(offset + 2 + 1));
   data[offset] = std::uint8_t(major_type << 5) | 25;
   auto fixed = fixEndianness(v);
   if (res)
@@ -580,7 +580,7 @@ result serializeItem(const std::uint8_t major_type, const std::uint32_t v, Data&
     return serializeItem(major_type, static_cast<std::uint16_t>(v), data);
   }
   const std::size_t offset = data.size();
-  result res = data.resize(offset + 4 + 1);
+  result res = data.resize(static_cast<std::uint32_t>(offset + 4 + 1));
   auto fixed = fixEndianness(v);
   data[offset] = std::uint8_t(major_type << 5) | 26;
   if (res)
@@ -601,7 +601,7 @@ result serializeItem(const std::uint8_t major_type, const std::uint64_t v, Data&
     return serializeItem(major_type, static_cast<std::uint32_t>(v), data);
   }
   const std::size_t offset = data.size();
-  result res = data.resize(offset + 8 + 1);
+  result res = data.resize(static_cast<std::uint32_t>(offset + 8 + 1));
   data[offset] = std::uint8_t(major_type << 5) | 27;
   auto fixed = fixEndianness(v);
   if (res)
@@ -693,7 +693,7 @@ static result deserializeInteger(std::uint8_t major_type, Type& v, Data& data)
     }
     else
     {
-      v = res;
+      v = static_cast<Type>(res);
       return advanced;
     }
   }
@@ -722,13 +722,13 @@ static result deserializeSignedInteger(Type& v, Data& data)
     }
     else
     {
-      v = res;
+      v = static_cast<Type>(res);
       return advanced;
     }
   }
   else if (read_major_type == 0b001)
   {
-    std::int64_t signedres = -(res + 1);
+    std::int64_t signedres = -(static_cast<std::int64_t>(res) + 1);
     if (signedres < std::numeric_limits<Type>::min())
     {
       CBOR_TYPE_ERROR("Deserialized value" + std::to_string(res) + " does not fit in " + typeid(Type).name())
@@ -736,7 +736,7 @@ static result deserializeSignedInteger(Type& v, Data& data)
     }
     else
     {
-      v = signedres;
+      v = static_cast<Type>(signedres);
       return advanced;
     }
   }
@@ -895,7 +895,7 @@ struct trait_floating_point_helper<std::uint16_t>
     const std::uint32_t frac = (h & 0x3FF);
     if (exp == 0b11111)
     {  // infinity and nan, set exponent to 0xFF, copy shifted frac and sign.
-      std::uint32_t z = ((h & 0x8000) << 16) | (0xFF << 23) | (frac << 13);
+      std::uint32_t z = ((h & 0x8000u) << 16) | (0xFF << 23) | (frac << 13);
       return type_cast<const float>(z);
     }
     else if (exp == 0)
@@ -903,11 +903,11 @@ struct trait_floating_point_helper<std::uint16_t>
       // The ldexp expression can be written in one float multiplication because each short float can be exactly
       // represented in a float. The subsequent arithmetic does not cause loss of precision.
       // Hardcode 2**-14 / (1 << 10); hex(struct.unpack("!I", struct.pack("!f", (2**-14)/(1 <<10)))[0])
-      const std::uint32_t two_power_minus_twentyfour_signed = 0x33800000 | (((h & 0x8000)) << 16);
+      const std::uint32_t two_power_minus_twentyfour_signed = 0x33800000u | (((h & 0x8000u)) << 16);
       return float(frac) * type_cast<const float>(two_power_minus_twentyfour_signed);
     }
     // normal case
-    std::uint32_t z = ((h & 0x8000) << 16) | (((h & 0x7c00) + 0x1C000) << 13) | ((h & 0x03FF) << 13);
+    std::uint32_t z = ((h & 0x8000u) << 16) | (((h & 0x7c00u) + 0x1C000u) << 13) | ((h & 0x03FFu) << 13);
     return type_cast<const float>(z);
   }
 
@@ -920,7 +920,7 @@ struct trait_floating_point_helper<std::uint16_t>
   {
     const std::uint32_t& f = type_cast<const std::uint32_t>(f_in);
     const std::uint32_t exp = (f >> 23) & 0xFF;
-    const std::uint32_t frac = (f & 0x7fffff) | (1 << 23);
+    const std::uint32_t frac = (f & 0x7fffffu) | (1u << 23);
 
     if (handle_out_of_bounds)
     {
@@ -931,12 +931,12 @@ struct trait_floating_point_helper<std::uint16_t>
       if (std::abs(f_in) < min_val)
       {
         // Value is so small it's rounded to zero.
-        return (std::signbit(f_in) << 15);
+        return static_cast<std::uint16_t>(static_cast<std::uint16_t>(std::signbit(f_in)) << 15);
       }
       else if (std::abs(f_in) >= 65536)
       {
         // Value is so large we round to inifinity.
-        return (0b11111 << 10) | (std::signbit(f_in) << 15);
+        return static_cast<std::uint16_t>((0b11111 << 10) | (static_cast<std::uint16_t>(std::signbit(f_in)) << 15u));
       }
     }
 
@@ -944,20 +944,22 @@ struct trait_floating_point_helper<std::uint16_t>
     if (exp == 0xFF)
     {
       // infinity and nan.
-      return (0b11111 << 10) | (std::signbit(f_in) << 15) | (frac >> (22 - 9));
+      return static_cast<std::uint16_t>((0b11111 << 10) | static_cast<std::uint16_t>(std::signbit(f_in) << 15) |
+                                        (frac >> (22 - 9)));
     }
     else if (exp == 0)
     {
       // this is a zero, just copy the sign.
-      return (std::signbit(f_in) << 15);
+      return static_cast<std::uint16_t>(std::signbit(f_in) << 15);
     }
     else if (exp <= 0x70)
     {
       // subnormals.
-      const std::int32_t offset_exp = exp - 127 + 1;
-      return (std::signbit(f_in) << 15) | (frac >> -offset_exp);
+      const std::int32_t offset_exp = static_cast<std::int32_t>(exp) - 127 + 1;
+      return static_cast<std::uint16_t>(static_cast<std::uint16_t>(std::signbit(f_in) << 15) | (frac >> -offset_exp));
     }
-    return ((f >> 16) & 0x8000) | ((((f & 0x7f800000) - 0x38000000) >> 13) & 0x7c00) | ((f >> 13) & 0x03ff);
+    return static_cast<std::uint16_t>((f >> 16) & 0x8000) | ((((f & 0x7f800000) - 0x38000000) >> 13) & 0x7c00) |
+           ((f >> 13) & 0x03ff);
   }
 };
 
@@ -1012,7 +1014,7 @@ struct traits<trait_families::floating_point, FloatingPointType>
         CBOR_FALLTHROUGH;
         // intentional fallthrough, it's downgradable to single precision float.
       case trait_floating_point_helper<float>::minor_type:
-        if (!trait_floating_point_helper<float>::downgradable(v))
+        if (!trait_floating_point_helper<float>::downgradable(static_cast<float>(v)))
         {
           using Helper = trait_floating_point_helper<float>;
           result res = serializePrimitive((0b111 << 5) | Helper::minor_type, data);
@@ -1035,7 +1037,7 @@ struct traits<trait_families::floating_point, FloatingPointType>
         res += data.resize(offset + sizeof(Helper::int_type));
         if (res)
         {
-          const auto to_store = Helper::encode(v);
+          const auto to_store = Helper::encode(static_cast<float>(v));
           const auto fixed = fixEndianness(to_store);
           write_into<Helper::int_type>(&(data[offset]), &fixed);
         }
@@ -1070,7 +1072,7 @@ struct traits<trait_families::floating_point, FloatingPointType>
           return res;
         }
         auto fixed = fixEndianness(type_cast<const Helper::int_type>(data[offset]));
-        v = type_cast<const Helper::type>(fixed);
+        v = static_cast<Type>(type_cast<const Helper::type>(fixed));
         return res;
       }
       case (((0b111 << 5) | trait_floating_point_helper<float>::minor_type)):
@@ -1122,10 +1124,10 @@ struct traits<const char*>
     std::size_t length = strlen(v);
     result res = serializeItem(0b011, length, data);
     std::size_t offset = data.size();
-    res += data.resize(data.size() + length);
-    for (std::size_t i = 0; i < length; i++)
+    res += data.resize(static_cast<std::uint32_t>(data.size() + length));
+    if (res)
     {
-      data[i + offset] = v[i];
+      std::memcpy(&(data[offset]), v, length);
     }
     return res + length;
   }

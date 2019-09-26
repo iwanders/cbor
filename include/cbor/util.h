@@ -66,21 +66,19 @@ inline std::uint64_t fixEndianness(const std::uint64_t in)
 
 namespace detail
 {
-
-template < typename T>
-struct  RefWrapper
+template <typename T>
+struct RefWrapper
 {
   const T& value;
 };
 
 template <typename In, typename Out>
-union Converter
-{
-    RefWrapper<In> in;
-    RefWrapper<Out> out;
+union Converter {
+  RefWrapper<In> in;
+  RefWrapper<Out> out;
 };
 
-}
+}  // namespace detail
 
 /**
  * @brief Interpret memory at in into a different type.
@@ -92,7 +90,7 @@ union Converter
 template <typename Out, typename In>
 const Out& type_cast(const In& in)
 {
-  return detail::Converter<In, Out>{{in}}.out.value;  // don't ask about the curly braces.
+  return detail::Converter<In, Out>{ { in } }.out.value;  // don't ask about the curly braces.
 }
 
 /**

@@ -50,14 +50,14 @@ struct Table
     std::uint32_t m = i << 13;  // Zero pad mantissa bits
     std::uint32_t e = 0;        // Zero exponent
 
-    while (!(m & 0x00800000))  // While not normalized
+    while (!(m & 0x00800000u))  // While not normalized
     {
-      e -= 0x00800000;  // Decrement exponent (1<<23)
-      m <<= 1;          // Shift mantissa
+      e -= 0x00800000u;  // Decrement exponent (1<<23)
+      m <<= 1;           // Shift mantissa
     }
-    m &= ~0x00800000;  // Clear leading 1 bit
-    e += 0x38800000;   // Adjust bias ((127-14)<<23)
-    return m | e;      // Return combined number
+    m &= static_cast<std::uint32_t>(~0x00800000u);  // Clear leading 1 bit
+    e += 0x38800000u;                               // Adjust bias ((127-14)<<23)
+    return m | e;                                   // Return combined number
   }
 
   void compute()
@@ -99,30 +99,30 @@ struct Table
     // encode
     for (std::uint32_t i = 0; i < 256; i++)
     {
-      std::int32_t e = i - 127;
+      std::int32_t e = static_cast<std::int32_t>(i) - 127;
       if (e < -24)
       {
         // Very small numbers map to zero
-        basetable[i | 0x000] = 0x0000;
-        basetable[i | 0x100] = 0x8000;
-        shifttable[i | 0x000] = 24;
-        shifttable[i | 0x100] = 24;
+        basetable[i | 0x000] = 0x0000u;
+        basetable[i | 0x100] = 0x8000u;
+        shifttable[i | 0x000] = 24u;
+        shifttable[i | 0x100] = 24u;
       }
       else if (e < -14)
       {
         // Small numbers map to denorms
         basetable[i | 0x000] = (0x0400 >> (-e - 14));
         basetable[i | 0x100] = (0x0400 >> (-e - 14)) | 0x8000;
-        shifttable[i | 0x000] = -e - 1;
-        shifttable[i | 0x100] = -e - 1;
+        shifttable[i | 0x000] = static_cast<std::uint8_t>(-e - 1);
+        shifttable[i | 0x100] = static_cast<std::uint8_t>(-e - 1);
       }
       else if (e <= 15)
       {
         // Normal numbers just lose precision
-        basetable[i | 0x000] = ((e + 15) << 10);
-        basetable[i | 0x100] = ((e + 15) << 10) | 0x8000;
-        shifttable[i | 0x000] = 13;
-        shifttable[i | 0x100] = 13;
+        basetable[i | 0x000] = static_cast<std::uint16_t>((e + 15) << 10);
+        basetable[i | 0x100] = static_cast<std::uint16_t>(((e + 15) << 10) | 0x8000);
+        shifttable[i | 0x000] = 13u;
+        shifttable[i | 0x100] = 13u;
       }
       else if (e < 128)
       {
@@ -154,8 +154,7 @@ struct Table
   }
 };
 
-union float_uint32
-{
+union float_uint32 {
   float f;
   std::uint32_t i;
 };
@@ -166,7 +165,8 @@ std::uint16_t encode(const float f_in)
   float_uint32 converter;
   converter.f = f_in;
   const std::uint32_t f = converter.i;
-  return t.basetable[(f >> 23) & 0x1ff] + ((f & 0x007fffff) >> t.shifttable[(f >> 23) & 0x1ff]);
+  return static_cast<std::uint16_t>(t.basetable[(f >> 23) & 0x1ffu] +
+                                    ((f & 0x007fffffu) >> t.shifttable[(f >> 23) & 0x1ffu]));
 }
 
 float decode(const std::uint16_t h)
