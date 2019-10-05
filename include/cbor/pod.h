@@ -428,15 +428,15 @@ struct write_adapter<DataType*> : std::true_type, write_adapter_helper<write_ada
   {
   }
 
-  result resize(std::uint32_t value)
+  result resize(std::uint32_t resize_value)
   {
-    if (value > max_length)
+    if (resize_value > max_length)
     {
-      CBOR_BUFFER_ERROR("Resize failed: " + std::to_string(value) +
+      CBOR_BUFFER_ERROR("Resize failed: " + std::to_string(resize_value) +
                         " exceed max length: " + std::to_string(max_length));
       return false;
     }
-    used_size = value;
+    used_size = resize_value;
     return true;
   }
 
@@ -723,9 +723,9 @@ static result deserializeSignedInteger(Type& v, Data& data)
   std::uint64_t res;
   result advanced = deserializeItem(first, res, data);
   std::uint8_t read_major_type = first >> 5;
-  if (read_major_type == 0b000)
+  if (read_major_type == 0b000)  // positive integer
   {
-    if (res > std::numeric_limits<Type>::max())
+    if (res > static_cast<std::uint64_t>(std::numeric_limits<Type>::max()))
     {
       CBOR_TYPE_ERROR("Deserialized value" + std::to_string(res) + " does not fit in " + typeid(Type).name())
       return false;
@@ -736,7 +736,7 @@ static result deserializeSignedInteger(Type& v, Data& data)
       return advanced;
     }
   }
-  else if (read_major_type == 0b001)
+  else if (read_major_type == 0b001)  // negative integer
   {
     std::int64_t signedres = -(static_cast<std::int64_t>(res) + 1);
     if (signedres < std::numeric_limits<Type>::min())
