@@ -64,9 +64,9 @@ struct write_adapter<Data> : std::true_type, write_adapter_helper<write_adapter<
   }
   write_adapter<Data>(Data& d) : data{ d } {};
 
-  result resize(std::size_t value)
+  result resize(std::size_t resize_value)
   {
-    data.resize(value);
+    data.resize(resize_value);
     return true;
   }
   std::size_t size() const
