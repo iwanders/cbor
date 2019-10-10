@@ -186,10 +186,33 @@ struct trait_dispatcher<T, 0>
   using Type = trait_selector<0, T>;
 };
 
-//
-// Some helpers to check whether a type is supported by our traits.
+/**
+ * @brief Struct with SFINEA to check whether a particular TypeToCheck could be instantiated.
+ * this is used to check whether a specialization exists. This makes use of the fact that a templated struct without a
+ * body like:
+ *      template <typename T, typename = void>
+ *      struct traits;
+ * does not allow sizeof() to be called on it.
+ */
+template <typename TypeToCheck>
+struct SizeofExists
+{
+private:
+  // Check whether sizeof(U) can compile, if it is the return type of test is true_type.
+  template <typename U>
+  static auto test(int) -> decltype((sizeof(U), std::true_type()));
+
+  // Otherwise we fall back to this and we return a false_type
+  template <typename>
+  static auto test(...) -> std::false_type;
+
+public:
+  static constexpr bool value = decltype(test<TypeToCheck>(0))::value;
+};
+
+// Helpers to check whether a type is supported by our traits.
 template <typename T>
-using has_trait = std::is_default_constructible<typename detail::trait_dispatcher<T>::Type::Trait>;
+using has_trait = SizeofExists<typename detail::trait_dispatcher<T>::Type::Trait>;
 
 }  // namespace detail
 }  // namespace cbor
