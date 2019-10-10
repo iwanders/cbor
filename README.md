@@ -59,8 +59,8 @@ Supported STL containers:
 - `std::string`: Handled as `const char*`. Deserialization supports 'indefinite' strings.
 
 Supported STL smart pointers:
-- `std::shared_ptr`: Serializes the dereferenced ponter. If a `nullptr` this serializes as cbor `null` type.
-- `std::unique_ptr`: Serializes the dereferenced ponter. If a `nullptr` this serializes as cbor `null` type.
+- `std::shared_ptr`: Serializes the dereferenced pointer. If a `nullptr` this serializes as cbor `null` type.
+- `std::unique_ptr`: Serializes the dereferenced pointer. If a `nullptr` this serializes as cbor `null` type.
 
 Supported CBOR types:
 - `map`, indefinite length supported for `std::map`.
